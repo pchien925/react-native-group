@@ -64,7 +64,7 @@ const ButtonComponent = (props: IProps) => {
         {icon && iconFlex === "left" && icon}
         <TextComponent
           text={text}
-          color={textColor ?? appColors.white}
+          color={textColor ? textColor : appColors.white}
           styles={[
             textStyles,
             {

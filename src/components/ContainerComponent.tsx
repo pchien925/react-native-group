@@ -29,7 +29,7 @@ const ContainerComponent = (props: IProps) => {
 
   const headerComponent = () => {
     return (
-      <View style={{ flex: 1, paddingTop: 25 }}>
+      <View style={{ flex: 1, paddingTop: 4 }}>
         {(title || back) && (
           <RowComponent
             styles={{
@@ -75,7 +75,7 @@ const ContainerComponent = (props: IProps) => {
 
   return isImageBackground ? (
     <ImageBackground
-      source={require("../assets/images/splash-img.png")}
+      source={require("../assets/images/onBoarding.png")}
       style={{ flex: 1 }}
       imageStyle={{ flex: 1 }}
     >

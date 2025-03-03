@@ -13,28 +13,29 @@ import ButtonComponent from "@/src/components/ButtonComponent";
 import SocialLogin from "@/src/components/SocialLogin";
 import RowComponent from "@/src/components/RowComponent";
 import { useRouter } from "expo-router";
-import axios from "axios";
+import { loginApi } from "@/src/services/api";
 
 const Login = () => {
   const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
 
-  const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
-
   const handleLogin = async () => {
-    console.log("Login - v1");
-    const res = await axios.get(`BACKEND_URL:9990/api/v1/users/1`);
-    console.log(res.data);
+    try {
+      console.log(email, password);
+      const res = await loginApi(email, password);
+      if (res.data) {
+        console.log(res.data);
+      } else {
+        console.log(res?.message);
+      }
+    } catch (err) {
+      console.log(err);
+    }
   };
 
-  useEffect(() => {
-    console.log("Login");
-    handleLogin();
-  }, []);
-
   return (
-    <ContainerComponent isScrollable>
+    <ContainerComponent isScrollable back>
       <SectionComponent
         styles={{
           justifyContent: "center",
@@ -87,13 +88,17 @@ const Login = () => {
           <ButtonComponent
             text="Quên mật khẩu?"
             type="link"
-            onPress={() => {}}
+            onPress={() => {
+              router.push("/auth/ForgotPassword");
+            }}
           />
         </RowComponent>
         <SpaceComponent height={24} />
         <ButtonComponent
           text="Đăng Nhập"
-          onPress={() => {}}
+          onPress={() => {
+            handleLogin();
+          }}
           type="primary"
           styles={{ width: "100%" }}
         />

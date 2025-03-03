@@ -15,16 +15,39 @@ import DateTimePickerComponent from "@/src/components/DateTimePickerComponent";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Checkbox from "expo-checkbox";
+import { registerApi } from "@/src/services/api";
+import { format, parse } from "date-fns";
 
 const Register = () => {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [confirmPassword, setConfirmPassword] = React.useState("");
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
-  const [address, setAddress] = React.useState("");
-  const [sex, setSex] = React.useState("");
-  const [date, setDate] = React.useState(new Date());
+  const [gender, setGender] = React.useState("");
+  const [dob, setDob] = React.useState(new Date());
+
+  const handleRegister = async () => {
+    try {
+      const formattedDob = format(dob, "MM/dd/yyyy");
+      const dateObject = parse(formattedDob, "MM/dd/yyyy", new Date());
+      const res = await registerApi(
+        email,
+        password,
+        phone,
+        name,
+        name,
+        dateObject,
+        gender
+      );
+      if (res.data) {
+        console.log(res.data);
+      } else {
+        console.log(res?.message);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
     <ContainerComponent isScrollable>
@@ -68,11 +91,11 @@ const Register = () => {
           onChange={setName}
           affix={<Ionicons name="person-outline" size={24} color="black" />}
         />
-        <DateTimePickerComponent date={date} setDate={setDate} />
+        <DateTimePickerComponent date={dob} setDate={setDob} />
         <InputComponent
           placeholder="Giới tính"
-          value={sex}
-          onChange={setSex}
+          value={gender}
+          onChange={setGender}
           affix={
             <FontAwesome name="intersex" size={24} color={appColors.text} />
           }
@@ -117,7 +140,9 @@ const Register = () => {
         <SpaceComponent height={24} />
         <ButtonComponent
           text="Đăng Kí"
-          onPress={() => {}}
+          onPress={() => {
+            handleRegister();
+          }}
           type="primary"
           styles={{ width: "100%" }}
         />

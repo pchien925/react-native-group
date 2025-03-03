@@ -7,29 +7,30 @@ import TextComponent from "../components/TextComponent";
 import ButtonComponent from "../components/ButtonComponent";
 import SectionComponent from "../components/SectionComponent";
 import { useRouter } from "expo-router";
+import ContainerComponent from "../components/ContainerComponent";
 
 const OnBoarding = () => {
   const router = useRouter();
 
   return (
-    <ImageBackground
-      source={require("../assets/images/onBoarding.png")}
-      style={{
-        flex: 1,
-      }}
-      resizeMode="cover"
-    >
+    <ContainerComponent isImageBackground>
       <View style={{ flex: 2 }}>
         <TextComponent
           text="Chào mừng bạn đến với Pizza Hut"
-          numberOfLines={2}
           color={appColors.white}
-          size={38}
+          size={36}
           styles={{ marginTop: 100, fontWeight: "bold", paddingHorizontal: 20 }}
         />
       </View>
-      <View style={{ flex: 1 }}></View>
-      <View style={{ backgroundColor: appColors.white, flex: 1.2 }}>
+      <View
+        style={{
+          backgroundColor: appColors.white,
+          flex: 1.2,
+          bottom: 0,
+          position: "absolute",
+          width: "100%",
+        }}
+      >
         <SectionComponent>
           <TextComponent
             text="Đăng nhập để nhận các ưu đãi hấp dẫn!!"
@@ -56,7 +57,7 @@ const OnBoarding = () => {
           />
         </SectionComponent>
       </View>
-    </ImageBackground>
+    </ContainerComponent>
   );
 };
 

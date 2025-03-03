@@ -5,14 +5,16 @@ import { Image, SafeAreaView, View } from "react-native";
 import ButtonComponent from "../components/ButtonComponent";
 import OnBoarding from "./OnBoarding";
 import { appInfo } from "../constants/appInfo";
+import VerifyCode from "./auth/OtpVerification";
+import Register from "./auth/Register";
+import ForgotPassword from "./auth/ForgotPassword";
+import ResetPassword from "./auth/ResetPassword";
+import ResetSuccessfully from "./auth/ResetSuccessfully";
+import OtpVerification from "./auth/OtpVerification";
+import Profile from "./user/Profile";
 
 const HomeScreen = () => {
-  const [demo, setDemo] = useState<string>("");
-  return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <OnBoarding />
-    </SafeAreaView>
-  );
+  return <OnBoarding />;
 };
 
 export default HomeScreen;
