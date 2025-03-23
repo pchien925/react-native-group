@@ -13,10 +13,12 @@ interface IProps {
   children: ReactNode;
   bgColor?: string;
   styles?: StyleProp<ViewStyle>;
+  onPress?: () => void; // Thêm prop onPress
 }
 
 const CardComponent = (props: IProps) => {
-  const { children, bgColor, styles } = props;
+  const { children, bgColor, styles, onPress } = props;
+
   return (
     <TouchableOpacity
       style={[
@@ -27,6 +29,7 @@ const CardComponent = (props: IProps) => {
         },
         styles,
       ]}
+      onPress={onPress} // Truyền onPress vào TouchableOpacity
     >
       {children}
     </TouchableOpacity>

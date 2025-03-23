@@ -9,12 +9,29 @@ import SpaceComponent from "@/src/components/SpaceComponent";
 import ButtonComponent from "@/src/components/ButtonComponent";
 import RowComponent from "@/src/components/RowComponent";
 import { OtpInput } from "react-native-otp-entry";
-import { router, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { verifyApi } from "@/src/services/api";
 
 const OtpVerification = () => {
+  const params = useLocalSearchParams();
+  const email = Array.isArray(params.email)
+    ? params.email[0]
+    : params.email || "";
+
   const [otp, setOtp] = React.useState("");
   const router = useRouter();
-  const handleLogin = async () => {};
+  const handleVerify = async () => {
+    try {
+      const res = await verifyApi(email, otp);
+      if (res.data) {
+        console.log(res.data);
+        alert("Xác thực thành công");
+        router.push("/auth/Login");
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
     <ContainerComponent isScrollable back>
@@ -32,7 +49,7 @@ const OtpVerification = () => {
           }}
         />
         <TextComponent
-          text="Quên mật khẩu"
+          text="Xác nhận email"
           size={28}
           styles={{ fontWeight: "bold" }}
         />
@@ -57,7 +74,7 @@ const OtpVerification = () => {
         <ButtonComponent
           text="Xác nhận"
           onPress={() => {
-            handleLogin();
+            handleVerify();
             router.push("/auth/ResetPassword");
           }}
           type="primary"

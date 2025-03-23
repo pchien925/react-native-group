@@ -1,5 +1,5 @@
-import { View, Text, Image } from "react-native";
-import React, { useEffect } from "react";
+import { Image } from "react-native";
+import React from "react";
 import ContainerComponent from "@/src/components/ContainerComponent";
 import SectionComponent from "@/src/components/SectionComponent";
 import { appInfo } from "@/src/constants/appInfo";
@@ -14,6 +14,7 @@ import SocialLogin from "@/src/components/SocialLogin";
 import RowComponent from "@/src/components/RowComponent";
 import { useRouter } from "expo-router";
 import { loginApi } from "@/src/services/api";
+import { RootStackParamList } from "../../types/types";
 
 const Login = () => {
   const router = useRouter();
@@ -26,6 +27,8 @@ const Login = () => {
       const res = await loginApi(email, password);
       if (res.data) {
         console.log(res.data);
+        alert("Đăng nhập thành công");
+        router.push("(tabs)");
       } else {
         console.log(res?.message);
       }

@@ -9,7 +9,7 @@ import { appColors } from "@/src/constants/appColors";
 import Fontisto from "@expo/vector-icons/Fontisto";
 import SpaceComponent from "@/src/components/SpaceComponent";
 import ButtonComponent from "@/src/components/ButtonComponent";
-import { router, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 
 const ForgotPassword = () => {
   const [email, setEmail] = React.useState("");

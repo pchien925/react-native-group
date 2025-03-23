@@ -16,36 +16,45 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Checkbox from "expo-checkbox";
 import { registerApi } from "@/src/services/api";
-import { format, parse } from "date-fns";
+import moment from "moment";
+import { router } from "expo-router";
 
 const Register = () => {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [name, setName] = React.useState("");
+  const [fullName, setFullName] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [gender, setGender] = React.useState("");
   const [dob, setDob] = React.useState(new Date());
-
+  const [isLoading, setIsLoading] = React.useState(false);
   const handleRegister = async () => {
+    const formattedDate = moment(dob).format("MM/DD/YYYY");
+    console.log(fullName);
+    setIsLoading(true);
     try {
-      const formattedDob = format(dob, "MM/dd/yyyy");
-      const dateObject = parse(formattedDob, "MM/dd/yyyy", new Date());
       const res = await registerApi(
         email,
         password,
         phone,
-        name,
-        name,
-        dateObject,
+        fullName,
+        formattedDate,
         gender
       );
       if (res.data) {
         console.log(res.data);
+        setIsLoading(false);
+        alert("Đăng kí thành công");
+        router.push({
+          pathname: "/auth/OtpVerification",
+          params: { email },
+        });
       } else {
         console.log(res?.message);
+        setIsLoading(false);
       }
     } catch (err) {
       console.log(err);
+      setIsLoading(false);
     }
   };
 
@@ -87,8 +96,8 @@ const Register = () => {
       <SectionComponent>
         <InputComponent
           placeholder="Tên của bạn"
-          value={name}
-          onChange={setName}
+          value={fullName}
+          onChange={setFullName}
           affix={<Ionicons name="person-outline" size={24} color="black" />}
         />
         <DateTimePickerComponent date={dob} setDate={setDob} />
@@ -144,6 +153,7 @@ const Register = () => {
             handleRegister();
           }}
           type="primary"
+          disabled={isLoading}
           styles={{ width: "100%" }}
         />
       </SectionComponent>

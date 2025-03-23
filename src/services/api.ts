@@ -9,9 +9,8 @@ export const registerApi = (
   email: string,
   password: string,
   phone: string,
-  lastName: string,
-  firstName: string,
-  dob: Date,
+  fullName: string,
+  dob: string,
   gender: string
 ) => {
   const url = `/api/v1/auth/register`;
@@ -19,9 +18,36 @@ export const registerApi = (
     email,
     password,
     phone,
-    lastName,
-    firstName,
+    fullName,
     dob,
     gender,
+  });
+};
+
+export const verifyApi = (email: string, code: string) => {
+  const url = `/api/v1/auth/verify`;
+  return axios.post<IBackendResponse<IVerify>>(url, { email, code });
+};
+
+export const forgotPasswordApi = (email: string) => {
+  const url = `/api/v1/auth/verify`;
+  return axios.post<IBackendResponse<IForgotPassword>>(url, { email });
+};
+
+export const resetPasswordApi = (email: string, code: string) => {
+  const url = `/api/v1/auth/reset-password`;
+  return axios.post<IBackendResponse<IResetPassword>>(url, { email, code });
+};
+
+export const changePasswordApi = (
+  email: string,
+  password: string,
+  confirmPassword: string
+) => {
+  const url = `/api/v1/auth/change-password`;
+  return axios.post<IBackendResponse<IChangePassword>>(url, {
+    email,
+    password,
+    confirmPassword,
   });
 };

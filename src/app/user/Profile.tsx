@@ -1,8 +1,6 @@
-import { View, Text, Button } from "react-native";
 import React from "react";
 import ContainerComponent from "@/src/components/ContainerComponent";
 import SectionComponent from "@/src/components/SectionComponent";
-// import UserAvatar from "react-native-user-avatar";
 import ButtonComponent from "@/src/components/ButtonComponent";
 import { appColors } from "@/src/constants/appColors";
 import SpaceComponent from "@/src/components/SpaceComponent";
@@ -11,6 +9,7 @@ import Fontisto from "@expo/vector-icons/Fontisto";
 import DateTimePickerComponent from "@/src/components/DateTimePickerComponent";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import UserAvatarComponent from "@/src/components/UserAvatarComponent";
 
 const Profile = () => {
   const [name, setName] = React.useState("");
@@ -24,14 +23,12 @@ const Profile = () => {
       <SectionComponent
         styles={{ justifyContent: "center", alignItems: "center" }}
       >
-        {/* <UserAvatar
+        <UserAvatarComponent
           size={100}
           name="John Doe"
-          bgColor={"#ffff"}
-          src={
-            "https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg?semt=ais_hybrid"
-          }
-        /> */}
+          bgColor="#ffff" // Lưu ý: #ffff không hợp lệ, nên dùng #ffffff
+          src="https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg?semt=ais_hybrid"
+        />
         <SpaceComponent height={10} />
         <ButtonComponent
           text="Đổi ảnh đại diện"
@@ -73,7 +70,7 @@ const Profile = () => {
       </SectionComponent>
       <SectionComponent>
         <ButtonComponent
-          text="Đăng Kí"
+          text="Cập nhật"
           onPress={() => {
             console.log(date);
           }}
