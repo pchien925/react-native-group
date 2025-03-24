@@ -51,3 +51,28 @@ export const changePasswordApi = (
     confirmPassword,
   });
 };
+
+export const getMenuItemsApi = (
+  page: number,
+  size: number,
+  sort: string,
+  direction: string
+) => {
+  const url = `/api/v1/menu-items?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
+  return axios.get<IBackendResponse<IPaginationData<IMenuItem>>>(url);
+};
+
+export const getMenuCategoriesApi = (
+  page: number,
+  size: number,
+  sort: string,
+  direction: string
+) => {
+  const url = `/api/v1/menu-categories?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
+  return axios.get<IBackendResponse<IPaginationData<IMenuCategory>>>(url);
+};
+
+export const getMenuItemOptionTypesApi = (menuItemId: Number) => {
+  const url = `/api/v1/menu-items/${menuItemId}/option-types`;
+  return axios.get<IBackendResponse<IOptionType[]>>(url);
+};

@@ -2,39 +2,30 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import CardComponent from "./CardComponent";
 import { appColors } from "@/src/constants/appColors";
 
-// Interface cho product
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-}
-
 interface ProductComponentProps {
-  product: Product;
-  onAddToCart?: (productId: string) => void;
-  onPress?: (productId: string) => void;
-  style?: any; // Thêm style để nhận từ FlatList
+  product: IMenuItem;
+  onAddToCart?: (productId: number) => void; // Sửa Number thành number để khớp với IMenuItem
+  onPress?: (productId: number) => void; // Sửa Number thành number để khớp với IMenuItem
+  style?: any;
 }
 
 const ProductComponent = ({
   product,
   onAddToCart,
   onPress,
-  style, // Nhận style từ bên ngoài
+  style,
 }: ProductComponentProps) => {
-  const { name, description, price, image } = product;
+  const { name, description, basePrice, imageUrl, id } = product;
 
   const handleAddToCart = () => {
     if (onAddToCart) {
-      onAddToCart(product.id);
+      onAddToCart(id); // id đã là number từ IMenuItem
     }
   };
 
   const handlePress = () => {
     if (onPress) {
-      onPress(product.id);
+      onPress(id); // id đã là number từ IMenuItem
     }
   };
 
@@ -42,7 +33,7 @@ const ProductComponent = ({
     <CardComponent styles={[styles.card, style]} onPress={handlePress}>
       {/* Hình ảnh sản phẩm */}
       <Image
-        source={{ uri: image }}
+        source={{ uri: imageUrl }}
         style={styles.productImage}
         resizeMode="cover"
       />
@@ -53,13 +44,13 @@ const ProductComponent = ({
       </Text>
 
       {/* Mô tả */}
-      <Text style={styles.description} numberOfLines={2}>
+      <Text style={styles.description} numberOfLines={2} ellipsizeMode="tail">
         {description}
       </Text>
 
       {/* Giá và nút Thêm */}
       <View style={styles.footer}>
-        <Text style={styles.price}>{price.toLocaleString("vi-VN")}đ</Text>
+        <Text style={styles.price}>{basePrice.toLocaleString("vi-VN")}đ</Text>
         <TouchableOpacity style={styles.addButton} onPress={handleAddToCart}>
           <Text style={styles.addButtonText}>Thêm</Text>
         </TouchableOpacity>
@@ -87,7 +78,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   description: {
-    fontSize: 11, // Giảm để phù hợp kích thước nhỏ
+    fontSize: 11,
     color: appColors.gray || "#666",
     marginTop: 2,
     lineHeight: 14,
@@ -110,7 +101,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   addButtonText: {
-    color: appColors.white,
+    color: appColors.white || "#fff", // Thêm fallback
     fontSize: 11, // Giảm để phù hợp nút nhỏ
     fontWeight: "600",
   },

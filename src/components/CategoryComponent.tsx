@@ -8,69 +8,54 @@ import {
 } from "react-native";
 import { useState, useEffect } from "react";
 import { appColors } from "@/src/constants/appColors";
-
-// Giả lập dữ liệu category với tên và hình ảnh
-const mockCategories = [
-  {
-    id: "1",
-    name: "Đồ ăn",
-    image:
-      "https://cdn.pixabay.com/photo/2017/12/09/08/18/pizza-3007395_960_720.jpg",
-  },
-  {
-    id: "2",
-    name: "Đồ uống",
-    image:
-      "https://cdn.pixabay.com/photo/2017/06/26/19/31/coffee-2443531_960_720.jpg",
-  },
-  {
-    id: "3",
-    name: "Thời trang",
-    image:
-      "https://cdn.pixabay.com/photo/2016/11/19/18/06/feet-1840619_960_720.jpg",
-  },
-  {
-    id: "4",
-    name: "Điện tử",
-    image:
-      "https://cdn.pixabay.com/photo/2016/11/29/05/45/electronics-1867916_960_720.jpg",
-  },
-  {
-    id: "5",
-    name: "Sách",
-    image:
-      "https://cdn.pixabay.com/photo/2016/03/27/22/22/books-1281581_960_720.jpg",
-  },
-];
-
-// Interface cho category
-interface Category {
-  id: string;
-  name: string;
-  image: string;
-}
+import { getMenuCategoriesApi } from "../services/api";
 
 interface CategoryComponentProps {
-  onCategoryPress?: (categoryId: string) => void;
+  onCategoryPress?: (categoryId: number) => void;
 }
 
 const CategoryComponent = ({ onCategoryPress }: CategoryComponentProps) => {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<IMenuCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await getMenuCategoriesApi(1, 10, "name", "asc");
+      console.log("fetchCategories response:", res);
+
+      // Kiểm tra theo cấu trúc thực tế từ Swagger
+      if (res.status === 200 && res.data?.content) {
+        setCategories(res.data.content);
+        console.log("Categories set:", res.data.content);
+      } else {
+        const errorMsg = res.message || "Không thể tải danh mục";
+        setError(errorMsg);
+        console.log("API error:", errorMsg);
+      }
+    } catch (err: any) {
+      const errorMsg = err.message || "Đã xảy ra lỗi khi tải danh mục";
+      setError(errorMsg);
+      console.error("Error fetching categories:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      setCategories(mockCategories);
-    };
     fetchCategories();
   }, []);
 
-  const renderCategoryItem = ({ item }: { item: Category }) => (
+  const renderCategoryItem = ({ item }: { item: IMenuCategory }) => (
     <TouchableOpacity
       style={styles.categoryItem}
       onPress={() => onCategoryPress && onCategoryPress(item.id)}
     >
       <Image
-        source={{ uri: item.image }}
+        source={{ uri: item.imageUrl }}
         style={styles.categoryImage}
         resizeMode="cover"
       />
@@ -78,13 +63,32 @@ const CategoryComponent = ({ onCategoryPress }: CategoryComponentProps) => {
     </TouchableOpacity>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Đang tải...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity onPress={fetchCategories} style={styles.retryButton}>
+          <Text style={styles.retryText}>Thử lại</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Danh mục</Text>
       <FlatList
         data={categories}
         renderItem={renderCategoryItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContainer}
@@ -100,7 +104,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "bold",
-    color: appColors.text,
+    color: appColors.text || "#000",
     paddingHorizontal: 16,
     marginBottom: 10,
   },
@@ -115,14 +119,36 @@ const styles = StyleSheet.create({
   categoryImage: {
     width: 60,
     height: 60,
-    borderRadius: 30, // Hình tròn
+    borderRadius: 30,
     marginBottom: 5,
   },
   categoryText: {
-    color: appColors.text,
+    color: appColors.text || "#000",
     fontSize: 14,
     fontWeight: "500",
     textAlign: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: appColors.text || "#000",
+    textAlign: "center",
+  },
+  errorText: {
+    fontSize: 16,
+    color: "red",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  retryButton: {
+    padding: 10,
+    backgroundColor: appColors.primary || "#007AFF",
+    borderRadius: 5,
+    alignSelf: "center",
+  },
+  retryText: {
+    color: appColors.white || "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 });
 

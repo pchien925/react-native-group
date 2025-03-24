@@ -1,65 +1,22 @@
+import { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, ScrollView } from "react-native";
-import React from "react";
 import Slideshow from "../../components/SlideshowComponent";
 import CategoryComponent from "../../components/CategoryComponent";
-import ProductComponent, { Product } from "../../components/ProductComponent";
+import ProductComponent from "../../components/ProductComponent";
 import { appColors } from "@/src/constants/appColors";
 import { useRouter } from "expo-router";
-
-// Giả lập dữ liệu sản phẩm
-const mockProducts: Product[] = [
-  {
-    id: "1",
-    name: "Gà Giòn Không Xương Xốt Hàn M...",
-    description: "Vị gà ngọt ngào với xốt mật on...",
-    price: 79000,
-    image:
-      "https://cdn.pixabay.com/photo/2017/07/16/11/51/fried-chicken-2508639_960_720.jpg",
-  },
-  {
-    id: "2",
-    name: "Pizza Hải Sản",
-    description: "Pizza với tôm, mực và phô mai...",
-    price: 129000,
-    image:
-      "https://cdn.pixabay.com/photo/2017/12/09/08/18/pizza-3007395_960_720.jpg",
-  },
-  {
-    id: "3",
-    name: "Cánh Gà Chiên Nước Mắm",
-    description: "Cánh gà giòn rụm với nước mắm...",
-    price: 69000,
-    image:
-      "https://cdn.pixabay.com/photo/2017/07/16/11/51/fried-chicken-2508639_960_720.jpg",
-  },
-  {
-    id: "4",
-    name: "Mì Ý Sốt Bò Bằm",
-    description: "Mì Ý thơm ngon với sốt bò bằm...",
-    price: 89000,
-    image:
-      "https://cdn.pixabay.com/photo/2017/06/01/07/15/pasta-2361856_960_720.jpg",
-  },
-  {
-    id: "5",
-    name: "Mì Ý Sốt Bò Bằm",
-    description: "Mì Ý thơm ngon với sốt bò bằm...",
-    price: 89000,
-    image:
-      "https://cdn.pixabay.com/photo/2017/06/01/07/15/pasta-2361856_960_720.jpg",
-  },
-  {
-    id: "6",
-    name: "Mì Ý Sốt Bò Bằm",
-    description: "Mì Ý thơm ngon với sốt bò bằm...",
-    price: 89000,
-    image:
-      "https://cdn.pixabay.com/photo/2017/06/01/07/15/pasta-2361856_960_720.jpg",
-  },
-];
+import ProductModalComponent from "@/src/components/ProductModelComponent"; // Đảm bảo đúng đường dẫn
+import { getMenuItemsApi } from "@/src/services/api";
 
 const HomePage = () => {
   const router = useRouter();
+  const [products, setProducts] = useState<IMenuItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<IMenuItem | null>(
+    null
+  );
+  const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const slides = [
     {
@@ -94,79 +51,125 @@ const HomePage = () => {
     },
   ];
 
-  const handleCategoryPress = (categoryId: string) => {
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await getMenuItemsApi(1, 10, "name", "asc");
+        console.log("fetchProducts response:", res);
+
+        if (res.status === 200 && res.data?.content) {
+          setProducts(res.data.content);
+          console.log("Products set:", res.data.content);
+        } else {
+          setError(res.message || "Không thể tải sản phẩm");
+        }
+      } catch (err: any) {
+        setError(err.message || "Đã xảy ra lỗi khi tải sản phẩm");
+        console.error("Error fetching products:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const handleCategoryPress = (categoryId: number) => {
     console.log("Selected category ID:", categoryId);
   };
 
-  const handleAddToCart = (productId: string) => {
-    console.log("Added to cart, product ID:", productId);
+  const handleAddToCart = (
+    productId: number,
+    selectedOptions?: { [key: string]: string }
+  ) => {
+    console.log("Added to cart:", { productId, selectedOptions });
   };
 
-  const handleProductPress = (productId: string) => {
+  const handleProductPress = (productId: number) => {
     console.log("Product pressed, ID:", productId);
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      setSelectedProduct(product);
+      setModalVisible(true);
+    }
   };
 
-  const renderFeaturedProductItem = ({ item }: { item: Product }) => (
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedProduct(null);
+  };
+
+  const renderFeaturedProductItem = ({ item }: { item: IMenuItem }) => (
     <ProductComponent
       product={item}
-      onAddToCart={handleAddToCart}
+      onAddToCart={(productId) => handleAddToCart(productId)}
       onPress={handleProductPress}
-      style={styles.featuredProductItem} // Style cho sản phẩm nổi bật
+      style={styles.featuredProductItem}
     />
   );
 
-  const renderAllProductItem = ({ item }: { item: Product }) => (
+  const renderAllProductItem = ({ item }: { item: IMenuItem }) => (
     <ProductComponent
       product={item}
-      onAddToCart={handleAddToCart}
+      onAddToCart={(productId) => handleAddToCart(productId)}
       onPress={handleProductPress}
-      style={styles.allProductItem} // Style cho tất cả sản phẩm
+      style={styles.allProductItem}
     />
   );
+
+  if (loading) return <Text style={styles.loadingText}>Đang tải...</Text>;
+  if (error) return <Text style={styles.errorText}>{error}</Text>;
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-    >
-      <Slideshow
-        slides={slides}
-        autoplay={true}
-        showButtons={false}
-        height={250}
-        titleColor="#fff"
-        descriptionColor="#ddd"
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Slideshow
+          slides={slides}
+          autoplay={true}
+          showButtons={false}
+          height={250}
+          titleColor="#fff"
+          descriptionColor="#ddd"
+        />
+        <CategoryComponent onCategoryPress={handleCategoryPress} />
+        <View style={styles.productsSection}>
+          <Text style={styles.sectionTitle}>Sản phẩm nổi bật</Text>
+          <FlatList
+            data={products}
+            renderItem={renderFeaturedProductItem}
+            keyExtractor={(item) => String(item.id)}
+            horizontal={true}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.featuredProductList}
+            snapToInterval={160}
+            decelerationRate="fast"
+          />
+        </View>
+        <View style={styles.productsSection}>
+          <Text style={styles.sectionTitle}>Tất cả sản phẩm</Text>
+          <FlatList
+            data={products}
+            renderItem={renderAllProductItem}
+            keyExtractor={(item) => `all-${item.id}`}
+            numColumns={2}
+            contentContainerStyle={styles.allProductList}
+            columnWrapperStyle={{ paddingHorizontal: 0 }}
+            scrollEnabled={false}
+          />
+        </View>
+      </ScrollView>
+      <ProductModalComponent
+        visible={modalVisible}
+        product={selectedProduct}
+        onClose={closeModal}
+        onAddToCart={handleAddToCart}
       />
-      <CategoryComponent onCategoryPress={handleCategoryPress} />
-      {/* Sản phẩm nổi bật */}
-      <View style={styles.productsSection}>
-        <Text style={styles.sectionTitle}>Sản phẩm nổi bật</Text>
-        <FlatList
-          data={mockProducts}
-          renderItem={renderFeaturedProductItem}
-          keyExtractor={(item) => item.id}
-          horizontal={true}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.featuredProductList}
-          snapToInterval={160}
-          decelerationRate="fast"
-        />
-      </View>
-      {/* Tất cả sản phẩm */}
-      <View style={styles.productsSection}>
-        <Text style={styles.sectionTitle}>Tất cả sản phẩm</Text>
-        <FlatList
-          data={mockProducts}
-          renderItem={renderAllProductItem}
-          keyExtractor={(item) => `all-${item.id}`}
-          numColumns={2}
-          contentContainerStyle={styles.allProductList}
-          columnWrapperStyle={{ paddingHorizontal: 0 }}
-          scrollEnabled={false}
-        />
-      </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -189,19 +192,31 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   featuredProductList: {
-    paddingHorizontal: 16, // Khoảng cách hai bên danh sách
+    paddingHorizontal: 16,
   },
   featuredProductItem: {
-    marginRight: 20, // Tăng khoảng cách giữa các sản phẩm lên 20 (trước là 10)
+    marginRight: 20,
     width: 150,
   },
   allProductList: {
-    paddingHorizontal: 10, // Khoảng cách hai bên danh sách
+    paddingHorizontal: 10,
   },
   allProductItem: {
-    flex: 1, // Mỗi mục chiếm đều không gian trong cột
-    marginHorizontal: 5, // Khoảng cách ngang giữa các sản phẩm
-    marginVertical: 5, // Khoảng cách dọc giữa các hàng
+    flex: 1,
+    marginHorizontal: 5,
+    marginVertical: 5,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: appColors.text || "#000",
+    textAlign: "center",
+    marginTop: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "red",
+    textAlign: "center",
+    marginTop: 20,
   },
 });
 
