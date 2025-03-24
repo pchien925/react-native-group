@@ -7,10 +7,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Alert,
 } from "react-native";
 import { appColors } from "@/src/constants/appColors";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { getMenuItemOptionTypesApi } from "@/src/services/api";
+import SectionComponent from "./SectionComponent";
+import ButtonComponent from "./ButtonComponent";
+import RowComponent from "./RowComponent";
+import { fontFamilies } from "../constants/fontFamilies";
 
 interface ProductModalProps {
   visible: boolean;
@@ -18,7 +23,8 @@ interface ProductModalProps {
   onClose: () => void;
   onAddToCart?: (
     productId: number,
-    selectedOptions?: { [key: string]: string }
+    selectedOptions?: { [key: string]: string },
+    quantity?: number
   ) => void;
 }
 
@@ -32,14 +38,15 @@ const ProductModalComponent = ({
   const [selectedOptions, setSelectedOptions] = useState<{
     [key: string]: string;
   }>({});
+  const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset state và fetch optionTypes khi modal mở hoặc product thay đổi
   useEffect(() => {
     if (!visible || !product) {
       setOptionTypes([]);
       setSelectedOptions({});
+      setQuantity(1);
       setError(null);
       setLoading(false);
       return;
@@ -72,17 +79,31 @@ const ProductModalComponent = ({
     }));
   };
 
+  const handleQuantityChange = (delta: number) => {
+    setQuantity((prev) => Math.max(1, prev + delta));
+  };
+
+  const handleClose = () => {
+    if (Object.keys(selectedOptions).length > 0 || quantity > 1) {
+      Alert.alert("Xác nhận", "Bạn có chắc muốn đóng mà không lưu thay đổi?", [
+        { text: "Hủy", style: "cancel" },
+        { text: "Đóng", onPress: onClose },
+      ]);
+    } else {
+      onClose();
+    }
+  };
+
   const handleAddToCart = () => {
     if (onAddToCart && product) {
-      onAddToCart(product.id, selectedOptions);
-      onClose();
+      onAddToCart(product.id, selectedOptions, quantity);
+      handleClose();
     }
   };
 
   const totalPrice = useMemo(() => {
     if (!product) return 0;
     let total = product.basePrice;
-
     optionTypes.forEach((optionType) => {
       const selectedValue = selectedOptions[optionType.name];
       if (selectedValue) {
@@ -94,9 +115,8 @@ const ProductModalComponent = ({
         }
       }
     });
-
-    return total;
-  }, [product, optionTypes, selectedOptions]);
+    return total * quantity;
+  }, [product, optionTypes, selectedOptions, quantity]);
 
   const isAddDisabled = useMemo(() => {
     return optionTypes.some(
@@ -105,7 +125,33 @@ const ProductModalComponent = ({
     );
   }, [optionTypes, selectedOptions]);
 
-  if (!product || !visible) return null;
+  if (!visible) return null;
+
+  if (!product) {
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={visible}
+        onRequestClose={handleClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <SectionComponent styles={styles.errorSection}>
+              <Text style={styles.errorText}>Không tìm thấy sản phẩm</Text>
+              <ButtonComponent
+                text="Đóng"
+                type="primary"
+                onPress={handleClose}
+                textColor={appColors.white}
+                textFont={fontFamilies.medium}
+              />
+            </SectionComponent>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   if (loading) {
     return (
@@ -113,11 +159,13 @@ const ProductModalComponent = ({
         animationType="slide"
         transparent={true}
         visible={visible}
-        onRequestClose={onClose}
+        onRequestClose={handleClose}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.loadingText}>Đang tải...</Text>
+            <SectionComponent>
+              <Text style={styles.loadingText}>Đang tải...</Text>
+            </SectionComponent>
           </View>
         </View>
       </Modal>
@@ -130,14 +178,20 @@ const ProductModalComponent = ({
         animationType="slide"
         transparent={true}
         visible={visible}
-        onRequestClose={onClose}
+        onRequestClose={handleClose}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>Đóng</Text>
-            </TouchableOpacity>
+            <SectionComponent styles={styles.errorSection}>
+              <Text style={styles.errorText}>{error}</Text>
+              <ButtonComponent
+                text="Đóng"
+                type="primary"
+                onPress={handleClose}
+                textColor={appColors.white}
+                textFont={fontFamilies.medium}
+              />
+            </SectionComponent>
           </View>
         </View>
       </Modal>
@@ -149,11 +203,11 @@ const ProductModalComponent = ({
       animationType="slide"
       transparent={true}
       visible={visible}
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.closeIcon} onPress={onClose}>
+          <TouchableOpacity style={styles.closeIcon} onPress={handleClose}>
             <AntDesign
               name="close"
               size={24}
@@ -167,74 +221,105 @@ const ProductModalComponent = ({
               style={styles.modalImage}
               resizeMode="cover"
             />
-
-            <View style={styles.modalContent}>
+            <SectionComponent styles={styles.contentSection}>
               <Text style={styles.modalName}>{product.name}</Text>
               <Text style={styles.modalPrice}>
                 {Number(product.basePrice).toLocaleString("vi-VN")}đ
               </Text>
               <Text style={styles.modalDescription}>{product.description}</Text>
+            </SectionComponent>
 
-              {optionTypes.length > 0 && (
-                <View style={styles.optionsContainer}>
-                  {optionTypes.map((optionType: IOptionType) => (
-                    <View key={optionType.id} style={styles.optionSection}>
-                      <Text style={styles.optionName}>{optionType.name}</Text>
-                      <View style={styles.optionValuesContainer}>
-                        {optionType.optionValues.map((optionValue) => (
-                          <TouchableOpacity
-                            key={optionValue.id}
+            {optionTypes.length > 0 && (
+              <SectionComponent styles={styles.optionsContainer}>
+                {optionTypes.map((optionType: IOptionType) => (
+                  <View key={optionType.id} style={styles.optionSection}>
+                    <Text style={styles.optionName}>{optionType.name}</Text>
+                    <View style={styles.optionValuesContainer}>
+                      {optionType.optionValues.map((optionValue) => (
+                        <TouchableOpacity
+                          key={optionValue.id}
+                          style={[
+                            styles.optionButton,
+                            selectedOptions[optionType.name] ===
+                              optionValue.name && styles.optionButtonSelected,
+                          ]}
+                          onPress={() =>
+                            handleOptionSelect(
+                              optionType.name,
+                              optionValue.name
+                            )
+                          }
+                          disabled={!optionValue.available}
+                        >
+                          <Text
                             style={[
-                              styles.optionButton,
+                              styles.optionText,
                               selectedOptions[optionType.name] ===
-                                optionValue.name && styles.optionButtonSelected,
+                                optionValue.name && styles.optionTextSelected,
+                              !optionValue.available &&
+                                styles.optionTextDisabled,
                             ]}
-                            onPress={() =>
-                              handleOptionSelect(
-                                optionType.name,
-                                optionValue.name
-                              )
-                            }
-                            disabled={!optionValue.available}
                           >
-                            <Text
-                              style={[
-                                styles.optionText,
-                                selectedOptions[optionType.name] ===
-                                  optionValue.name && styles.optionTextSelected,
-                                !optionValue.available &&
-                                  styles.optionTextDisabled,
-                              ]}
-                            >
-                              {optionValue.name} (
-                              {optionValue.extraCost >= 0
-                                ? `+${optionValue.extraCost.toLocaleString(
-                                    "vi-VN"
-                                  )}`
-                                : optionValue.extraCost.toLocaleString("vi-VN")}
-                              đ)
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
+                            {optionValue.name} (
+                            {optionValue.extraCost >= 0
+                              ? `+${optionValue.extraCost.toLocaleString(
+                                  "vi-VN"
+                                )}`
+                              : optionValue.extraCost.toLocaleString("vi-VN")}
+                            đ)
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
-                  ))}
-                </View>
-              )}
-            </View>
+                  </View>
+                ))}
+              </SectionComponent>
+            )}
 
-            <TouchableOpacity
-              style={[
+            <SectionComponent styles={styles.quantityContainer}>
+              <RowComponent justifyContent="space-between">
+                <Text style={styles.quantityLabel}>Số lượng:</Text>
+                <RowComponent>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => handleQuantityChange(-1)}
+                    disabled={quantity <= 1}
+                  >
+                    <AntDesign
+                      name="minus"
+                      size={20}
+                      color={appColors.text || "#000"}
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.quantityText}>{quantity}</Text>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => handleQuantityChange(1)}
+                  >
+                    <AntDesign
+                      name="plus"
+                      size={20}
+                      color={appColors.text || "#000"}
+                    />
+                  </TouchableOpacity>
+                </RowComponent>
+              </RowComponent>
+            </SectionComponent>
+
+            <ButtonComponent
+              text={`Thêm vào giỏ hàng (+${totalPrice.toLocaleString(
+                "vi-VN"
+              )}đ)`}
+              type="primary"
+              onPress={handleAddToCart}
+              disabled={isAddDisabled}
+              textColor={appColors.white}
+              textFont={fontFamilies.medium}
+              styles={[
                 styles.addButton,
                 isAddDisabled && styles.addButtonDisabled,
               ]}
-              onPress={handleAddToCart}
-              disabled={isAddDisabled}
-            >
-              <Text style={styles.addButtonText}>
-                Thêm vào giỏ hàng (+{totalPrice.toLocaleString("vi-VN")}đ)
-              </Text>
-            </TouchableOpacity>
+            />
           </ScrollView>
         </View>
       </View>
@@ -253,14 +338,14 @@ const styles = StyleSheet.create({
     width: "90%",
     backgroundColor: appColors.white || "#fff",
     borderRadius: 10,
-    padding: 15,
+    padding: 2,
     maxHeight: "80%",
     position: "relative",
   },
   closeIcon: {
     position: "absolute",
-    top: 10,
-    right: 10,
+    top: 5,
+    right: 5,
     width: 30,
     height: 30,
     justifyContent: "center",
@@ -272,20 +357,22 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 10,
   },
-  modalContent: {
-    paddingVertical: 10,
+  contentSection: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
   },
   modalName: {
     fontSize: 20,
     fontWeight: "bold",
     color: appColors.text || "#000",
-    marginBottom: 5,
+    marginTop: 6,
+    marginBottom: 4,
   },
   modalPrice: {
     fontSize: 18,
     fontWeight: "bold",
     color: appColors.primary || "#007AFF",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   modalDescription: {
     fontSize: 14,
@@ -293,33 +380,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   addButton: {
-    backgroundColor: appColors.primary || "#007AFF",
-    borderRadius: 5,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    marginTop: 15,
+    marginTop: 10,
   },
   addButtonDisabled: {
     backgroundColor: appColors.gray || "#666",
     opacity: 0.5,
   },
-  addButtonText: {
-    color: appColors.white || "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
   optionsContainer: {
-    marginTop: 15,
+    paddingHorizontal: 14,
+    marginTop: 8,
   },
   optionSection: {
-    marginBottom: 15,
+    marginBottom: 10,
   },
   optionName: {
     fontSize: 16,
     fontWeight: "600",
     color: appColors.text || "#000",
-    marginBottom: 5,
+    marginBottom: 6,
   },
   optionValuesContainer: {
     flexDirection: "row",
@@ -329,10 +407,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: appColors.gray || "#666",
     borderRadius: 5,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    marginRight: 10,
-    marginBottom: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginRight: 6,
+    marginBottom: 6,
   },
   optionButtonSelected: {
     backgroundColor: appColors.primary || "#007AFF",
@@ -358,19 +436,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "red",
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  closeButton: {
-    backgroundColor: appColors.primary || "#007AFF",
-    borderRadius: 5,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: "center",
+  errorSection: {
+    paddingBottom: 8,
   },
-  closeButtonText: {
-    color: appColors.white || "#fff",
+  quantityContainer: {
+    marginTop: 10,
+  },
+  quantityLabel: {
     fontSize: 16,
     fontWeight: "600",
+    color: appColors.text || "#000",
+  },
+  quantityButton: {
+    width: 26,
+    height: 26,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: appColors.gray || "#666",
+    borderRadius: 12,
+  },
+  quantityText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: appColors.text || "#000",
+    marginHorizontal: 12,
   },
 });
 

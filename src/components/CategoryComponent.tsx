@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,15 +7,18 @@ import {
   FlatList,
   Image,
 } from "react-native";
-import { useState, useEffect } from "react";
 import { appColors } from "@/src/constants/appColors";
 import { getMenuCategoriesApi } from "../services/api";
 
 interface CategoryComponentProps {
   onCategoryPress?: (categoryId: number) => void;
+  selectedCategoryId?: number; // Thêm prop để nhận category đã chọn từ MenuPage
 }
 
-const CategoryComponent = ({ onCategoryPress }: CategoryComponentProps) => {
+const CategoryComponent = ({
+  onCategoryPress,
+  selectedCategoryId,
+}: CategoryComponentProps) => {
   const [categories, setCategories] = useState<IMenuCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,22 +27,14 @@ const CategoryComponent = ({ onCategoryPress }: CategoryComponentProps) => {
     try {
       setLoading(true);
       setError(null);
-
       const res = await getMenuCategoriesApi(1, 10, "name", "asc");
-      console.log("fetchCategories response:", res);
-
-      // Kiểm tra theo cấu trúc thực tế từ Swagger
       if (res.status === 200 && res.data?.content) {
         setCategories(res.data.content);
       } else {
-        const errorMsg = res.message || "Không thể tải danh mục";
-        setError(errorMsg);
-        console.log("API error:", errorMsg);
+        setError(res.message || "Không thể tải danh mục");
       }
     } catch (err: any) {
-      const errorMsg = err.message || "Đã xảy ra lỗi khi tải danh mục";
-      setError(errorMsg);
-      console.error("Error fetching categories:", err);
+      setError(err.message || "Đã xảy ra lỗi khi tải danh mục");
     } finally {
       setLoading(false);
     }
@@ -48,19 +44,29 @@ const CategoryComponent = ({ onCategoryPress }: CategoryComponentProps) => {
     fetchCategories();
   }, []);
 
-  const renderCategoryItem = ({ item }: { item: IMenuCategory }) => (
-    <TouchableOpacity
-      style={styles.categoryItem}
-      onPress={() => onCategoryPress && onCategoryPress(item.id)}
-    >
-      <Image
-        source={{ uri: item.imageUrl }}
-        style={styles.categoryImage}
-        resizeMode="cover"
-      />
-      <Text style={styles.categoryText}>{item.name}</Text>
-    </TouchableOpacity>
-  );
+  const renderCategoryItem = ({ item }: { item: IMenuCategory }) => {
+    const isSelected = item.id === selectedCategoryId; // Kiểm tra xem category này có được chọn không
+    return (
+      <TouchableOpacity
+        style={[styles.categoryItem, isSelected && styles.selectedCategoryItem]}
+        onPress={() => onCategoryPress && onCategoryPress(item.id)}
+      >
+        <Image
+          source={{ uri: item.imageUrl || "https://via.placeholder.com/60" }}
+          style={styles.categoryImage}
+          resizeMode="cover"
+        />
+        <Text
+          style={[
+            styles.categoryText,
+            isSelected && styles.selectedCategoryText,
+          ]}
+        >
+          {item.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   if (loading) {
     return (
@@ -104,7 +110,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: appColors.text || "#000",
-    paddingHorizontal: 16,
+    paddingHorizontal: 16, // Đồng bộ với listContainer
     marginBottom: 10,
   },
   listContainer: {
@@ -114,6 +120,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 15,
     width: 80,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  selectedCategoryItem: {
+    backgroundColor: appColors.white2 || "#E6F0FF", // Màu nền khi được chọn
+    borderWidth: 1,
+    borderColor: appColors.primary || "#007AFF",
   },
   categoryImage: {
     width: 60,
@@ -126,6 +139,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     textAlign: "center",
+  },
+  selectedCategoryText: {
+    color: appColors.primary || "#007AFF", // Màu chữ khi được chọn
+    fontWeight: "600",
   },
   loadingText: {
     fontSize: 16,

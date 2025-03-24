@@ -5,11 +5,15 @@ import CategoryComponent from "../../components/CategoryComponent";
 import ProductComponent from "../../components/ProductComponent";
 import { appColors } from "@/src/constants/appColors";
 import { useRouter } from "expo-router";
-import ProductModalComponent from "@/src/components/ProductModelComponent"; // Đảm bảo đúng đường dẫn
+import ProductModalComponent from "@/src/components/ProductModelComponent";
 import {
   getMenuItemByMenuCategoryApi,
   getMenuItemsApi,
 } from "@/src/services/api";
+import RowComponent from "@/src/components/RowComponent";
+import ButtonComponent from "@/src/components/ButtonComponent";
+import SectionComponent from "@/src/components/SectionComponent";
+import TextComponent from "@/src/components/TextComponent";
 
 const HomePage = () => {
   const router = useRouter();
@@ -54,6 +58,26 @@ const HomePage = () => {
     },
   ];
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await getMenuItemsApi(1, 10, "name", "asc");
+        if (res.status === 200 && res.data?.content) {
+          setProducts(res.data.content);
+        } else {
+          setError(res.message || "Không thể tải sản phẩm");
+        }
+      } catch (err: any) {
+        setError(err.message || "Đã xảy ra lỗi khi tải sản phẩm");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
   const fetchProductsByMenuCategory = async (menuCategoryId: number) => {
     try {
       const res = await getMenuItemByMenuCategoryApi(
@@ -63,46 +87,17 @@ const HomePage = () => {
         "name",
         "asc"
       );
-      console.log("fetchProducts response:", res);
-
       if (res.status === 200 && res.data?.content) {
         setProducts(res.data.content);
-        console.log("Products set:", res.data.content);
       } else {
         setError(res.message || "Không thể tải sản phẩm");
       }
     } catch (err: any) {
       setError(err.message || "Đã xảy ra lỗi khi tải sản phẩm");
-      console.error("Error fetching products:", err);
     }
   };
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await getMenuItemsApi(1, 10, "name", "asc");
-        console.log("fetchProducts response:", res);
-
-        if (res.status === 200 && res.data?.content) {
-          setProducts(res.data.content);
-          console.log("Products set:", res.data.content);
-        } else {
-          setError(res.message || "Không thể tải sản phẩm");
-        }
-      } catch (err: any) {
-        setError(err.message || "Đã xảy ra lỗi khi tải sản phẩm");
-        console.error("Error fetching products:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, []);
-
   const handleCategoryPress = (categoryId: number) => {
-    console.log("Selected category ID:", categoryId);
     fetchProductsByMenuCategory(categoryId);
   };
 
@@ -114,7 +109,6 @@ const HomePage = () => {
   };
 
   const handleProductPress = (productId: number) => {
-    console.log("Product pressed, ID:", productId);
     const product = products.find((p) => p.id === productId);
     if (product) {
       setSelectedProduct(product);
@@ -130,7 +124,7 @@ const HomePage = () => {
   const renderFeaturedProductItem = ({ item }: { item: IMenuItem }) => (
     <ProductComponent
       product={item}
-      onAddToCart={(productId) => handleAddToCart(productId)}
+      onAddToCart={handleAddToCart}
       onPress={handleProductPress}
       style={styles.featuredProductItem}
     />
@@ -139,7 +133,7 @@ const HomePage = () => {
   const renderAllProductItem = ({ item }: { item: IMenuItem }) => (
     <ProductComponent
       product={item}
-      onAddToCart={(productId) => handleAddToCart(productId)}
+      onAddToCart={handleAddToCart}
       onPress={handleProductPress}
       style={styles.allProductItem}
     />
@@ -164,10 +158,27 @@ const HomePage = () => {
           descriptionColor="#ddd"
         />
         <CategoryComponent onCategoryPress={handleCategoryPress} />
-        <View style={styles.productsSection}>
-          <Text style={styles.sectionTitle}>Sản phẩm nổi bật</Text>
+        <SectionComponent styles={styles.productsSection}>
+          <RowComponent
+            justifyContent="space-between"
+            styles={styles.sectionHeader}
+          >
+            <TextComponent
+              text="Sản phẩm nổi bật"
+              styles={styles.sectionTitle}
+              font="bold"
+              color={appColors.text}
+            />
+            <ButtonComponent
+              text="Xem tất cả"
+              type="link"
+              onPress={() => router.push("/menu")}
+              textColor={appColors.primary}
+              textStyles={styles.viewAllText}
+            />
+          </RowComponent>
           <FlatList
-            data={products}
+            data={products.slice(0, 5)} // Giới hạn 5 sản phẩm nổi bật
             renderItem={renderFeaturedProductItem}
             keyExtractor={(item) => String(item.id)}
             horizontal={true}
@@ -175,20 +186,10 @@ const HomePage = () => {
             contentContainerStyle={styles.featuredProductList}
             snapToInterval={160}
             decelerationRate="fast"
+            initialNumToRender={5}
+            maxToRenderPerBatch={5}
           />
-        </View>
-        <View style={styles.productsSection}>
-          <Text style={styles.sectionTitle}>Tất cả sản phẩm</Text>
-          <FlatList
-            data={products}
-            renderItem={renderAllProductItem}
-            keyExtractor={(item) => `all-${item.id}`}
-            numColumns={2}
-            contentContainerStyle={styles.allProductList}
-            columnWrapperStyle={{ paddingHorizontal: 0 }}
-            scrollEnabled={false}
-          />
-        </View>
+        </SectionComponent>
       </ScrollView>
       <ProductModalComponent
         visible={modalVisible}
@@ -210,28 +211,35 @@ const styles = StyleSheet.create({
   },
   productsSection: {
     paddingVertical: 10,
+    paddingHorizontal: 5, // Thêm padding ngang để đồng bộ
+  },
+  sectionHeader: {
+    marginBottom: 8, // Khoảng cách giữa tiêu đề và danh sách
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: appColors.text || "#000",
-    paddingHorizontal: 16,
-    marginBottom: 10,
+  },
+  viewAllText: {
+    fontSize: 14,
+    textDecorationLine: "underline",
   },
   featuredProductList: {
-    paddingHorizontal: 16,
+    paddingVertical: 5,
   },
   featuredProductItem: {
-    marginRight: 20,
-    width: 150,
+    marginRight: 10, // Khoảng cách giữa các sản phẩm nổi bật
   },
   allProductList: {
-    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   allProductItem: {
     flex: 1,
     marginHorizontal: 5,
     marginVertical: 5,
+  },
+  columnWrapper: {
+    justifyContent: "space-between", // Căn đều 2 cột
   },
   loadingText: {
     fontSize: 16,
