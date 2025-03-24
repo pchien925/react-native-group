@@ -76,3 +76,14 @@ export const getMenuItemOptionTypesApi = (menuItemId: Number) => {
   const url = `/api/v1/menu-items/${menuItemId}/option-types`;
   return axios.get<IBackendResponse<IOptionType[]>>(url);
 };
+
+export const getMenuItemByMenuCategoryApi = (
+  categoryId: number,
+  page: number,
+  size: number,
+  sort: string,
+  direction: string
+) => {
+  const url = `/api/v1/menu-categories/${categoryId}/menu-items?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
+  return axios.get<IBackendResponse<IPaginationData<IMenuItem>>>(url);
+};

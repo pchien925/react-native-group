@@ -6,7 +6,10 @@ import ProductComponent from "../../components/ProductComponent";
 import { appColors } from "@/src/constants/appColors";
 import { useRouter } from "expo-router";
 import ProductModalComponent from "@/src/components/ProductModelComponent"; // Đảm bảo đúng đường dẫn
-import { getMenuItemsApi } from "@/src/services/api";
+import {
+  getMenuItemByMenuCategoryApi,
+  getMenuItemsApi,
+} from "@/src/services/api";
 
 const HomePage = () => {
   const router = useRouter();
@@ -51,6 +54,29 @@ const HomePage = () => {
     },
   ];
 
+  const fetchProductsByMenuCategory = async (menuCategoryId: number) => {
+    try {
+      const res = await getMenuItemByMenuCategoryApi(
+        menuCategoryId,
+        1,
+        10,
+        "name",
+        "asc"
+      );
+      console.log("fetchProducts response:", res);
+
+      if (res.status === 200 && res.data?.content) {
+        setProducts(res.data.content);
+        console.log("Products set:", res.data.content);
+      } else {
+        setError(res.message || "Không thể tải sản phẩm");
+      }
+    } catch (err: any) {
+      setError(err.message || "Đã xảy ra lỗi khi tải sản phẩm");
+      console.error("Error fetching products:", err);
+    }
+  };
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -77,6 +103,7 @@ const HomePage = () => {
 
   const handleCategoryPress = (categoryId: number) => {
     console.log("Selected category ID:", categoryId);
+    fetchProductsByMenuCategory(categoryId);
   };
 
   const handleAddToCart = (

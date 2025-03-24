@@ -2,22 +2,26 @@ import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import AntDesign from "@expo/vector-icons/AntDesign";
 
-import UserAvatarComponent from "./UserAvatarComponent";
 import SearchComponent from "@/src/components/SearchComponent";
 import RowComponent from "./RowComponent";
 import { appColors } from "@/src/constants/appColors";
 
 // Constants
-const AVATAR_SIZE = 40;
-const ICON_SIZE = 24;
-const HEADER_VERTICAL_PADDING = 10;
+const CART_ICON_SIZE = 24; // Kích thước icon giỏ hàng
+const ICON_SIZE = 20;
+const HEADER_VERTICAL_PADDING = 5;
 
 const HeaderComponent = () => {
   const router = useRouter();
 
-  const handleSearch = (text: string) => console.log("Searching:", text); // Sửa String thành string (TS convention)
+  const handleSearch = (text: string) => console.log("Searching:", text);
   const handleClear = () => console.log("Cleared");
   const handleBack = () => router.back();
+  const handleCartPress = () => {
+    // Xử lý khi nhấn vào giỏ hàng - bạn có thể điều hướng đến màn hình giỏ hàng
+    console.log("Cart pressed");
+    // Ví dụ điều hướng đến màn hình cart
+  };
 
   return (
     <View style={styles.headerContainer}>
@@ -35,17 +39,18 @@ const HeaderComponent = () => {
           inputStyles={styles.searchInput}
           clearable
           onClear={handleClear}
-          keyboardType="email-address" // Thay email-address bằng web-search cho phù hợp hơn
+          keyboardType="email-address"
           returnKeyType="search"
         />
 
-        {/* Avatar */}
-        <UserAvatarComponent
-          name="User"
-          size={AVATAR_SIZE}
-          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQDQjzviHm6Pnv3Zexbi1Uy6bFB0vwptrNK3Q&s"
-          styles={styles.avatar} // Sửa styles thành style cho đồng nhất với RN convention
-        />
+        {/* Cart Icon */}
+        <TouchableOpacity onPress={handleCartPress} style={styles.cartButton}>
+          <AntDesign
+            name="shoppingcart"
+            size={CART_ICON_SIZE}
+            color={appColors.text}
+          />
+        </TouchableOpacity>
       </RowComponent>
     </View>
   );
@@ -54,29 +59,31 @@ const HeaderComponent = () => {
 const styles = StyleSheet.create({
   headerContainer: {
     backgroundColor: appColors.primary,
-    paddingVertical: HEADER_VERTICAL_PADDING, // Sử dụng paddingVertical thay cho paddingTop và paddingBottom riêng
+    paddingVertical: HEADER_VERTICAL_PADDING,
   },
   headerRow: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     alignItems: "center",
   },
   backButton: {
-    width: 30,
-    height: 40,
+    width: 25,
+    height: 35,
     justifyContent: "center",
     alignItems: "center",
   },
   searchContainer: {
-    marginHorizontal: 6,
+    marginHorizontal: 10,
     flex: 1,
   },
   searchInput: {
-    fontWeight: "bold",
-    color: "blue",
+    height: 38,
+    color: "black",
   },
-  avatar: {
-    borderWidth: 2,
-    borderColor: appColors.white,
+  cartButton: {
+    width: 35, // Điều chỉnh kích thước nút giỏ hàng
+    height: 35,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

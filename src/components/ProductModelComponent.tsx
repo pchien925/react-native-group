@@ -232,7 +232,7 @@ const ProductModalComponent = ({
               disabled={isAddDisabled}
             >
               <Text style={styles.addButtonText}>
-                Thêm (+{totalPrice.toLocaleString("vi-VN")}đ)
+                Thêm vào giỏ hàng (+{totalPrice.toLocaleString("vi-VN")}đ)
               </Text>
             </TouchableOpacity>
           </ScrollView>

@@ -4,8 +4,8 @@ import { appColors } from "@/src/constants/appColors";
 
 interface ProductComponentProps {
   product: IMenuItem;
-  onAddToCart?: (productId: number) => void; // Sửa Number thành number để khớp với IMenuItem
-  onPress?: (productId: number) => void; // Sửa Number thành number để khớp với IMenuItem
+  onAddToCart?: (productId: number) => void;
+  onPress?: (productId: number) => void;
   style?: any;
 }
 
@@ -25,7 +25,7 @@ const ProductComponent = ({
 
   const handlePress = () => {
     if (onPress) {
-      onPress(id); // id đã là number từ IMenuItem
+      onPress(id);
     }
   };
 

@@ -30,7 +30,6 @@ const CategoryComponent = ({ onCategoryPress }: CategoryComponentProps) => {
       // Kiểm tra theo cấu trúc thực tế từ Swagger
       if (res.status === 200 && res.data?.content) {
         setCategories(res.data.content);
-        console.log("Categories set:", res.data.content);
       } else {
         const errorMsg = res.message || "Không thể tải danh mục";
         setError(errorMsg);
@@ -84,7 +83,7 @@ const CategoryComponent = ({ onCategoryPress }: CategoryComponentProps) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Danh mục</Text>
+      <Text style={styles.title}>Thực đơn</Text>
       <FlatList
         data={categories}
         renderItem={renderCategoryItem}
