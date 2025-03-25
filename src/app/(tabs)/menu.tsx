@@ -94,7 +94,7 @@ const MenuPage = () => {
   };
 
   const handleProductPress = (productId: number) => {
-    handleOpenModal(productId); // Tái sử dụng hàm mở Modal
+    router.push(`/menu/${productId}`); // Tái sử dụng hàm mở Modal
   };
 
   const closeModal = () => {
@@ -105,14 +105,13 @@ const MenuPage = () => {
   const renderAllProductItem = ({ item }: { item: IMenuItem }) => (
     <ProductComponent
       product={item}
-      onAddToCart={handleOpenModal} // Thay đổi để mở Modal thay vì thêm trực tiếp
+      onAddToCart={handleOpenModal}
       onPress={handleProductPress}
       style={styles.allProductItem}
     />
   );
 
-  if (loading) return <Text style={styles.loadingText}>Đang tải...</Text>;
-  if (error) return <Text style={styles.errorText}>{error}</Text>;
+  if (error) return <TextComponent text={error} styles={styles.errorText} />;
 
   return (
     <View style={styles.container}>
@@ -137,17 +136,21 @@ const MenuPage = () => {
               color={appColors.text}
             />
           </RowComponent>
-          <FlatList
-            data={products}
-            renderItem={renderAllProductItem}
-            keyExtractor={(item) => `all-${item.id}`}
-            numColumns={2}
-            contentContainerStyle={styles.allProductList}
-            columnWrapperStyle={styles.columnWrapper}
-            scrollEnabled={false}
-            initialNumToRender={6}
-            maxToRenderPerBatch={10}
-          />
+          {loading ? (
+            <TextComponent text="Đang tải..." styles={styles.loadingText} />
+          ) : (
+            <FlatList
+              data={products}
+              renderItem={renderAllProductItem}
+              keyExtractor={(item) => `all-${item.id}`}
+              numColumns={2}
+              contentContainerStyle={styles.allProductList}
+              columnWrapperStyle={styles.columnWrapper}
+              scrollEnabled={false}
+              initialNumToRender={6}
+              maxToRenderPerBatch={10}
+            />
+          )}
         </SectionComponent>
       </ScrollView>
       <ProductModalComponent

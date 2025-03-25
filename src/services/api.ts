@@ -87,3 +87,8 @@ export const getMenuItemByMenuCategoryApi = (
   const url = `/api/v1/menu-categories/${categoryId}/menu-items?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
   return axios.get<IBackendResponse<IPaginationData<IMenuItem>>>(url);
 };
+
+export const getMenuItemByIdApi = (id: number) => {
+  const url = `/api/v1/menu-items/${id}`;
+  return axios.get<IBackendResponse<IMenuItem>>(url);
+};
