@@ -4,11 +4,11 @@ import { StyleSheet, TouchableOpacity } from "react-native";
 import TextComponent from "@/components/common/TextComponent";
 import AvatarComponent from "@/components/common/AvatarComponent";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 
 interface CategoryItemProps {
   category: IMenuCategory;
-  isSelected: boolean;
+  isSelected?: boolean;
   onPress?: (category: IMenuCategory) => void;
 }
 
@@ -21,7 +21,7 @@ const MenuCategoryComponent: React.FC<CategoryItemProps> = ({
     <TouchableOpacity
       style={[
         globalStyles.menuCategory,
-        isSelected && globalStyles.menuCategorySelected, // Áp dụng kiểu khi được chọn
+        isSelected && globalStyles.menuCategorySelected,
       ]}
       onPress={() => onPress?.(category)}
       accessibilityLabel={category.name}
@@ -31,13 +31,13 @@ const MenuCategoryComponent: React.FC<CategoryItemProps> = ({
         imageUrl={category.imageUrl}
         style={[
           globalStyles.menuCategoryImage,
-          isSelected ? globalStyles.menuCategoryImageSelected : {}, // Kiểu avatar khi được chọn
+          isSelected ? globalStyles.menuCategoryImageSelected : {},
         ]}
       />
       <TextComponent
         style={[
           globalStyles.menuCategoryText,
-          isSelected ? globalStyles.menuCategoryTextSelected : {}, // Kiểu chữ khi được chọn
+          isSelected ? globalStyles.menuCategoryTextSelected : {},
         ]}
       >
         {category.name}

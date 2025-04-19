@@ -8,7 +8,7 @@ import {
   StyleProp,
 } from "react-native";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 
 // Định nghĩa các kiểu nút
@@ -44,9 +44,7 @@ const ButtonComponent: React.FC<ButtonProps> = ({
     switch (type) {
       case "primary":
         return {
-          backgroundColor: disabled
-            ? Colors.disabled // Có thể thay bằng Colors.disabled nếu thêm vào Colors.ts
-            : Colors.primary,
+          backgroundColor: disabled ? Colors.disabled : Colors.primary,
           borderWidth: 0,
         };
       case "secondary":
@@ -133,7 +131,7 @@ const ButtonComponent: React.FC<ButtonProps> = ({
         />
       ) : (
         <Text style={[globalStyles.buttonText, getTextStyle(), textStyle]}>
-          {title || "Nút"} {/* Fallback nếu title rỗng */}
+          {title || "Nút"}
         </Text>
       )}
     </TouchableOpacity>

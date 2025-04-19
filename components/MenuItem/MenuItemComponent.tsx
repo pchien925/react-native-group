@@ -5,7 +5,7 @@ import ImageComponent from "@/components/common/ImageComponent";
 import TextComponent from "@/components/common/TextComponent";
 import ButtonComponent from "@/components/common/ButtonComponent";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 
 interface IMenuItem {
   id: number;

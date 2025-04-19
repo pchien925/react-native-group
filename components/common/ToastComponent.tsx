@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { View, Text, ViewStyle, TextStyle, Animated } from "react-native";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 
 type ToastType = "success" | "warning" | "error" | "info" | "default";
@@ -29,23 +29,25 @@ const ToastComponent: React.FC<ToastProps> = ({
   const opacity = new Animated.Value(0);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (visible) {
       Animated.timing(opacity, {
         toValue: 1,
         duration: 300,
         useNativeDriver: true,
       }).start();
-
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         Animated.timing(opacity, {
           toValue: 0,
           duration: 300,
           useNativeDriver: true,
         }).start(() => onHide());
       }, duration);
-
-      return () => clearTimeout(timer);
     }
+    return () => {
+      clearTimeout(timer);
+      opacity.stopAnimation();
+    };
   }, [visible, duration, onHide]);
 
   const getToastStyle = (): ViewStyle => {

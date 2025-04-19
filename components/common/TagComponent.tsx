@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, ViewStyle, TextStyle } from "react-native";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 
 type TagType = "success" | "warning" | "error" | "info" | "default";

@@ -5,7 +5,7 @@ import {
   TextProps as RNTextProps,
 } from "react-native";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 
 type TextType = "heading" | "subheading" | "body" | "caption";

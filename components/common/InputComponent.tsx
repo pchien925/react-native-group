@@ -7,7 +7,7 @@ import {
   TextStyle,
 } from "react-native";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 
 interface InputProps extends TextInputProps {

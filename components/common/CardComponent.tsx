@@ -3,7 +3,7 @@ import { TextStyle, ViewStyle, TouchableOpacity } from "react-native";
 import TextComponent from "./TextComponent";
 import ImageComponent from "./ImageComponent";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 
 interface CardProps {

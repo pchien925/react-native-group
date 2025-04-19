@@ -6,7 +6,7 @@ import ContainerComponent from "@/components/common/ContainerComponent";
 import TextComponent from "@/components/common/TextComponent";
 import ImageComponent from "@/components/common/ImageComponent";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const SplashScreen = () => {

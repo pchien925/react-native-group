@@ -1,7 +1,14 @@
 import React from "react";
-import { Modal, View, Text, ViewStyle, TextStyle } from "react-native";
+import {
+  Modal,
+  View,
+  Text,
+  ViewStyle,
+  TextStyle,
+  ScrollView,
+} from "react-native";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import ButtonComponent from "./ButtonComponent";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -43,28 +50,28 @@ const ModalComponent: React.FC<ModalProps> = ({
             style,
           ]}
         >
-          {title && (
-            <Text
-              style={[
-                globalStyles.modalTitle,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-                titleStyle,
-              ]}
-            >
-              {title}
-            </Text>
-          )}
-          {children}
-          <ButtonComponent
-            title="Close"
-            onPress={onClose}
-            type="outline"
-            style={{ marginTop: 16 }}
-          />
+          <ScrollView
+            style={globalStyles.modalScrollView}
+            contentContainerStyle={globalStyles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {title && (
+              <Text
+                style={[
+                  globalStyles.modalTitle,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                  titleStyle,
+                ]}
+              >
+                {title}
+              </Text>
+            )}
+            {children}
+          </ScrollView>
         </View>
       </View>
     </Modal>

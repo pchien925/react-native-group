@@ -1,6 +1,6 @@
 import React from "react";
-import { View, ViewStyle } from "react-native";
-import { globalStyles } from "@/styles/globalStyles";
+import { TouchableOpacity, View, ViewStyle } from "react-native";
+import { globalStyles } from "@/styles/global.styles";
 
 interface RowProps {
   children: React.ReactNode;
@@ -13,27 +13,31 @@ interface RowProps {
     | "space-around"
     | "space-evenly";
   alignItems?: "flex-start" | "flex-end" | "center" | "stretch" | "baseline";
+  onPress?: () => void;
 }
 
 const RowComponent: React.FC<RowProps> = ({
   children,
   style,
-  justifyContent = "space-between",
-  alignItems = "center",
+  justifyContent,
+  alignItems,
+  onPress,
 }) => {
-  return (
-    <View
-      style={[
-        globalStyles.row,
-        {
-          justifyContent,
-          alignItems,
-        },
-        style,
-      ]}
-    >
+  const rowStyle = [
+    globalStyles.row,
+    {
+      justifyContent,
+      alignItems,
+    },
+    style,
+  ];
+
+  return onPress ? (
+    <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={rowStyle}>
       {children}
-    </View>
+    </TouchableOpacity>
+  ) : (
+    <View style={rowStyle}>{children}</View>
   );
 };
 

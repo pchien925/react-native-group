@@ -26,7 +26,7 @@ export const Colors = {
   white: "#FFFFFF", // Trắng tinh, dùng cho nền hoặc văn bản
   black: "#000000", // Đen, dùng cho viền hoặc văn bản đậm
   transparent: "transparent", // Trong suốt, dùng cho lớp phủ
-  disabled: "#B0BEC5", // Xám nhạt, dùng cho trạng thái vô hiệu hóa
+  disabled: "#a0a0a0", // Xám nhạt, dùng cho trạng thái vô hiệu hóa
 
   // Màu theo chủ đề pizza
   tomato: "#D32F2F", // Đỏ sốt cà chua
@@ -61,6 +61,7 @@ export const Colors = {
   buttonTextSecondary: "#2E1C1A", // Nâu đậm, văn bản trên nút phụ
   buttonAccent: "#E64A19", // Cam pepperoni, nút nổi bật (ví dụ: "Ưu đãi đặc biệt")
   buttonAccentHover: "#BF360C", // Cam đậm hơn, khi di chuột qua nút nổi bật
+  buttonCancel: "#FF9800", // Cam pepperoni, nút hủy (ví dụ: "Hủy đơn hàng")
 
   // Gradient
   gradients: {

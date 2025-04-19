@@ -3,7 +3,7 @@ import ContainerComponent from "@/components/common/ContainerComponent";
 import TextComponent from "@/components/common/TextComponent";
 import ButtonComponent from "@/components/common/ButtonComponent";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/globalStyles";
+import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 import { router } from "expo-router";
 import { StyleSheet } from "react-native";
@@ -13,7 +13,7 @@ const NotFoundScreen = () => {
   const { isDarkMode } = useTheme();
 
   const handleGoBack = () => {
-    router.replace("/index");
+    router.replace("/home");
   };
 
   return (

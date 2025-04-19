@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ImageComponent from "@/components/common/ImageComponent";
@@ -6,9 +6,14 @@ import BadgeComponent from "@/components/common/BadgeComponent";
 import HeaderComponent from "@/components/layout/HeaderComponent";
 import { Tabs } from "expo-router";
 import { Colors } from "@/constants/Colors";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { router } from "expo-router";
 
 export default function TabsLayout() {
-  const [cartCount, setCartCount] = useState(3); // Giả lập số lượng sản phẩm trong giỏ hàng
+  const cartCount = useSelector(
+    (state: RootState) => state.cart.cart?.cartItems.length || 0
+  );
 
   return (
     <Tabs
@@ -28,9 +33,7 @@ export default function TabsLayout() {
               <TouchableOpacity
                 key="cart"
                 style={styles.cartContainer}
-                onPress={() => {
-                  console.log("Navigate to cart");
-                }}
+                onPress={() => router.push("/cart")}
                 accessibilityLabel="Giỏ hàng"
                 accessibilityRole="button"
               >
@@ -52,9 +55,9 @@ export default function TabsLayout() {
           />
         ),
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: Colors.primary, // Màu khi tab được chọn
-        tabBarInactiveTintColor: Colors.textLightSecondary, // Màu khi tab không được chọn
-        tabBarShowLabel: true, // Hiển thị nhãn tab
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textLightSecondary,
+        tabBarShowLabel: true,
         tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
@@ -72,12 +75,12 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="order"
+        name="menu"
         options={{
-          title: "Đặt hàng",
+          title: "Thực đơn",
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
-              name={focused ? "receipt" : "receipt-outline"}
+              name={focused ? "restaurant" : "restaurant-outline"}
               size={focused ? 28 : 24}
               color={color}
             />
@@ -85,12 +88,12 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="menu"
+        name="order"
         options={{
-          title: "Thực đơn",
+          title: "Đơn hàng",
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
-              name={focused ? "restaurant" : "restaurant-outline"}
+              name={focused ? "receipt" : "receipt-outline"}
               size={focused ? 28 : 24}
               color={color}
             />

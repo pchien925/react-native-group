@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, FlatList } from "react-native";
 import MenuCategoryComponent from "@/components/MenuCategory/MenuCategoryComponent";
-import SectionTitle from "@/components/home/CategoryTitleComponent";
+import SectionTitle from "@/components/home/SectionTitleComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
 
 interface CategorySectionProps {
@@ -28,25 +28,24 @@ const CategorySectionComponent: React.FC<CategorySectionProps> = ({
 
   return (
     <>
-      <SectionTitle title="Danh Mục Sản Phẩm" />
+      <SectionTitle
+        title="Thực đơn"
+        showButton
+        buttonTitle="Xem thực đơn"
+        onButtonPress={() => {
+          console.log("Navigate to all categories");
+        }}
+      />
       <FlatList
         data={categories}
         renderItem={renderCategory}
         keyExtractor={(item) => item.id.toString()}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryList}
       />
       <SpaceComponent size={24} />
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  categoryList: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-});
 
 export default CategorySectionComponent;
