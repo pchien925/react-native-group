@@ -21,8 +21,15 @@ const RootLayout = () => {
             }}
           />
           <Stack.Screen
-            name="Cart"
+            name="cart"
             options={{ headerShown: true, headerTitle: "Giỏ hàng" }}
+          />
+          <Stack.Screen
+            name="order/[id]"
+            options={{
+              headerShown: true,
+              headerTitle: "Chi tiết đơn hàng",
+            }}
           />
         </Stack>
       </ThemeProvider>

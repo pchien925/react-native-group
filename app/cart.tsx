@@ -165,39 +165,6 @@ const CartScreen = () => {
 
   return (
     <ContainerComponent style={styles.container}>
-      <RowComponent
-        style={[
-          globalStyles.header,
-          styles.headerContainer,
-          {
-            backgroundColor: isDarkMode
-              ? Colors.backgroundDark
-              : Colors.backgroundLight,
-          },
-        ]}
-        alignItems="center"
-      >
-        <TouchableOpacity
-          style={globalStyles.backButton}
-          onPress={() => router.back()}
-          accessibilityLabel="Quay lại"
-          accessibilityRole="button"
-        >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color={
-              isDarkMode ? Colors.textDarkPrimary : Colors.textLightPrimary
-            }
-          />
-        </TouchableOpacity>
-        <TextComponent type="subheading" style={styles.title}>
-          Giỏ hàng
-          {cart && cart.cartItems.length > 0
-            ? `(${cart.cartItems.length})`
-            : ""}
-        </TextComponent>
-      </RowComponent>
       <SpaceComponent size={16} />
       {status === "loading" ? (
         <View style={styles.emptyContainer}>

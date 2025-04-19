@@ -100,4 +100,52 @@ declare global {
     email: string;
     phone: string;
   }
+
+  interface IBranchInfo {
+    id: number;
+    name: string;
+    address: string;
+    phone: string;
+  }
+
+  interface IPaymentInfo {
+    id: number;
+    paymentMethod: string;
+    paymentStatus: string;
+    transactionCode: string;
+    paidAt: string;
+    amount: number;
+  }
+  interface IShipmentTrackingEvent {
+    id: number;
+    deliveryStatus: string;
+    note: string;
+    eventTime: string;
+    locationLatitude: number;
+    locationLongitude: number;
+  }
+
+  interface IShipmentInfo {
+    id: number;
+    deliveryStatus: string;
+    trackingHistory: IShipmentTrackingEvent[];
+  }
+
+  interface IOrderDetail {
+    id: number;
+    orderCode: string;
+    totalPrice: number;
+    createdAt: string;
+    updatedAt: string;
+    note: string;
+    shippingAddress: string;
+    paymentMethod: string;
+    userInfo: IUserInfo;
+    branchInfo: IBranchInfo;
+    items: IOrderItem[];
+    paymentInfo?: IPaymentInfo[];
+    shipmentInfo?: IShipmentInfo[];
+    pointsEarnedOrSpent?: number;
+    loyaltyTransactionDescription?: string;
+  }
 }
