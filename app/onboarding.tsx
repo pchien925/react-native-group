@@ -1,15 +1,14 @@
-import React, { useState, useRef } from "react";
-import {
-  View,
-  Image,
-  Text,
-  FlatList,
-  Dimensions,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+// screens/OnboardingScreen.tsx
+import React, { useState, useRef, useCallback } from "react";
+import { FlatList, Dimensions, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import ContainerComponent from "@/components/common/ContainerComponent";
+import SpaceComponent from "@/components/common/SpaceComponent";
+import TextComponent from "@/components/common/TextComponent";
+import ButtonComponent from "@/components/common/ButtonComponent";
+import ImageComponent from "@/components/common/ImageComponent";
+import RowComponent from "@/components/common/RowComponent";
 import { Colors } from "@/constants/Colors";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -36,64 +35,97 @@ const onboardingData = [
 ];
 
 const OnboardingScreen = () => {
+  console.log("OnboardingScreen rendered");
   const { isDarkMode } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef(null);
+  const flatListRef = useRef<FlatList>(null);
 
-  const handleFinish = async () => {
-    await AsyncStorage.setItem("hasSeenOnboarding", "true");
-    router.replace("/login");
-  };
+  const handleFinish = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem("hasSeenOnboarding", "true");
+      router.replace("/login");
+    } catch (error) {
+      console.error("Error saving onboarding status:", error);
+    }
+  }, []);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex < onboardingData.length - 1) {
-      flatListRef.current.scrollToIndex({ index: currentIndex + 1 });
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
       setCurrentIndex(currentIndex + 1);
     } else {
       handleFinish();
     }
-  };
+  }, [currentIndex, handleFinish]);
 
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     handleFinish();
-  };
+  }, [handleFinish]);
 
-  const renderItem = ({ item }) => (
-    <View style={[styles.slide, { width }]}>
-      <Image
-        source={{ uri: item.image }}
-        style={styles.image}
-        resizeMode="cover"
+  const renderItem = useCallback(
+    ({ item }: { item: (typeof onboardingData)[0] }) => (
+      <View style={[styles.slide, { width }]}>
+        <ImageComponent
+          source={{ uri: item.image }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+        <SpaceComponent size={24} />
+        <TextComponent
+          type="heading"
+          style={[
+            styles.title,
+            {
+              color: isDarkMode
+                ? Colors.textDarkPrimary
+                : Colors.textLightPrimary,
+            },
+          ]}
+        >
+          {item.title}
+        </TextComponent>
+        <TextComponent
+          type="body"
+          style={[
+            styles.subtitle,
+            {
+              color: isDarkMode
+                ? Colors.textDarkSecondary
+                : Colors.textLightSecondary,
+            },
+          ]}
+        >
+          {item.subtitle}
+        </TextComponent>
+      </View>
+    ),
+    [isDarkMode]
+  );
+
+  const renderDot = useCallback(
+    (_: (typeof onboardingData)[0], index: number) => (
+      <View
+        key={index}
+        style={[
+          styles.dot,
+          {
+            backgroundColor:
+              index === currentIndex
+                ? isDarkMode
+                  ? Colors.accent
+                  : Colors.primary
+                : isDarkMode
+                ? Colors.textDarkSecondary
+                : Colors.textLightSecondary,
+          },
+        ]}
       />
-      <Text
-        style={[
-          styles.title,
-          {
-            color: isDarkMode
-              ? Colors.textDarkPrimary
-              : Colors.textLightPrimary,
-          },
-        ]}
-      >
-        {item.title}
-      </Text>
-      <Text
-        style={[
-          styles.subtitle,
-          {
-            color: isDarkMode
-              ? Colors.textDarkSecondary
-              : Colors.textLightSecondary,
-          },
-        ]}
-      >
-        {item.subtitle}
-      </Text>
-    </View>
+    ),
+    [currentIndex, isDarkMode]
   );
 
   return (
-    <View
+    <ContainerComponent
       style={[
         styles.container,
         {
@@ -115,60 +147,65 @@ const OnboardingScreen = () => {
           setCurrentIndex(index);
         }}
         keyExtractor={(_, index) => index.toString()}
+        getItemLayout={(data, index) => ({
+          length: width,
+          offset: width * index,
+          index,
+        })}
       />
-      <View style={styles.footer}>
-        <TouchableOpacity onPress={handleSkip}>
-          <Text
-            style={[
-              styles.buttonText,
-              {
-                color: isDarkMode
-                  ? Colors.textDarkSecondary
-                  : Colors.textLightSecondary,
-              },
-            ]}
-          >
-            Bỏ qua
-          </Text>
-        </TouchableOpacity>
-        <View style={styles.dots}>
-          {onboardingData.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor:
-                    index === currentIndex
-                      ? isDarkMode
-                        ? Colors.textDarkPrimary
-                        : Colors.textLightPrimary
-                      : isDarkMode
-                      ? Colors.textDarkSecondary
-                      : Colors.textLightSecondary,
-                },
-              ]}
-            />
-          ))}
-        </View>
-        <TouchableOpacity onPress={handleNext}>
-          <Text
-            style={[
-              styles.buttonText,
-              {
-                color: isDarkMode
-                  ? Colors.textDarkPrimary
-                  : Colors.textLightPrimary,
-              },
-            ]}
-          >
-            {currentIndex === onboardingData.length - 1
-              ? "Bắt đầu"
-              : "Tiếp theo"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      <RowComponent
+        alignItems="center"
+        justifyContent="space-between"
+        style={[
+          styles.footer,
+          {
+            backgroundColor: isDarkMode ? Colors.crust : Colors.white,
+            shadowColor: Colors.black,
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.15,
+            shadowRadius: 4,
+            elevation: 3,
+          },
+        ]}
+      >
+        <ButtonComponent
+          title="Bỏ qua"
+          type="text"
+          onPress={handleSkip}
+          textStyle={[
+            styles.buttonText,
+            {
+              color: isDarkMode
+                ? Colors.textDarkSecondary
+                : Colors.textLightSecondary,
+            },
+          ]}
+        />
+        <RowComponent style={styles.dots}>
+          {onboardingData.map(renderDot)}
+        </RowComponent>
+        <ButtonComponent
+          title={
+            currentIndex === onboardingData.length - 1 ? "Bắt đầu" : "Tiếp theo"
+          }
+          type="primary"
+          onPress={handleNext}
+          style={[
+            styles.nextButton,
+            {
+              backgroundColor: isDarkMode ? Colors.primary : Colors.accent,
+            },
+          ]}
+          textStyle={[
+            styles.buttonText,
+            {
+              color: Colors.white,
+              fontWeight: "700",
+            },
+          ]}
+        />
+      </RowComponent>
+    </ContainerComponent>
   );
 };
 
@@ -186,43 +223,41 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 20,
-    marginBottom: 24,
   },
   title: {
-    fontWeight: "bold",
-    fontSize: 22,
     textAlign: "center",
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
     textAlign: "center",
     paddingHorizontal: 20,
+    lineHeight: 20,
   },
   footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
+    padding: 16,
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: "500",
   },
+  nextButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
   dots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+    gap: 8,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginHorizontal: 4,
   },
 });
 

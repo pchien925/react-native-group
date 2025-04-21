@@ -1,3 +1,4 @@
+// components/cart/EmptyCartComponent.tsx
 import React from "react";
 import { View, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import TextComponent from "@/components/common/TextComponent";

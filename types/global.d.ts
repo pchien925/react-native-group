@@ -4,7 +4,7 @@ declare global {
   interface IBackendResponse<T> {
     error?: string | string[];
     status: number | string;
-    message: string;
+    message?: string;
     data?: T;
   }
 
@@ -44,7 +44,7 @@ declare global {
     id: number;
     name: string;
     description: string;
-    IOptionValues: IOptionValue[];
+    menuItemOption: IOptionValue[];
   }
 
   interface IOptionValue {
@@ -58,7 +58,7 @@ declare global {
     quantity: number;
     priceAtAddition: number;
     menuItem: IMenuItem;
-    options: IOptionValue[];
+    selectedOptions: IOptionValue[];
   }
 
   interface ICart {

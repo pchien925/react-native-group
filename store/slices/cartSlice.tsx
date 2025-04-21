@@ -1,4 +1,3 @@
-// store/slices/cartSlice.ts
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -32,10 +31,11 @@ export const fetchCart = createAsyncThunk(
       if (!accessToken) {
         throw new Error("No access token available");
       }
-      const response = await getCartApi();
+      const response: IBackendResponse<ICart> = await getCartApi();
       if (response.error || !response.data) {
         if (
           response.error &&
+          typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
           await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
@@ -49,15 +49,7 @@ export const fetchCart = createAsyncThunk(
             : response.message || "Failed to fetch cart"
         );
       }
-      // Chuyển đổi selectedOptions thành options
-      const cart = response.data;
-      cart.cartItems = cart.cartItems.map((item: any) => ({
-        ...item,
-        options: Array.isArray(item.selectedOptions)
-          ? item.selectedOptions
-          : [],
-      }));
-      return cart; // ICart
+      return response.data; // ICart
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to fetch cart");
     }
@@ -81,10 +73,15 @@ export const addToCart = createAsyncThunk(
       if (!accessToken) {
         throw new Error("No access token available");
       }
-      const response = await addItemToCartApi(menuItemId, quantity, options);
+      const response: IBackendResponse<ICart> = await addItemToCartApi(
+        menuItemId,
+        quantity,
+        options
+      );
       if (response.error || !response.data) {
         if (
           response.error &&
+          typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
           await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
@@ -98,15 +95,7 @@ export const addToCart = createAsyncThunk(
             : response.message || "Failed to add item to cart"
         );
       }
-      // Chuyển đổi selectedOptions thành options
-      const cart = response.data;
-      cart.cartItems = cart.cartItems.map((item: any) => ({
-        ...item,
-        options: Array.isArray(item.selectedOptions)
-          ? item.selectedOptions
-          : [],
-      }));
-      return cart; // ICart
+      return response.data; // ICart
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to add item to cart");
     }
@@ -126,10 +115,14 @@ export const updateQuantity = createAsyncThunk(
       if (!accessToken) {
         throw new Error("No access token available");
       }
-      const response = await updateQuantityApi(cartItemId, quantity);
+      const response: IBackendResponse<ICart> = await updateQuantityApi(
+        cartItemId,
+        quantity
+      );
       if (response.error || !response.data) {
         if (
           response.error &&
+          typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
           await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
@@ -143,14 +136,7 @@ export const updateQuantity = createAsyncThunk(
             : response.message || "Failed to update quantity"
         );
       }
-      // Chuyển đổi selectedOptions thành options
-      const updatedItem = {
-        ...response.data,
-        options: Array.isArray(response.data.selectedOptions)
-          ? response.data.selectedOptions
-          : [],
-      };
-      return updatedItem; // ICartItem
+      return response.data; // ICart
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to update quantity");
     }
@@ -167,10 +153,13 @@ export const removeFromCart = createAsyncThunk(
       if (!accessToken) {
         throw new Error("No access token available");
       }
-      const response = await removeItemFromCartApi(cartItemId);
-      if (response.error) {
+      const response: IBackendResponse<ICart> = await removeItemFromCartApi(
+        cartItemId
+      );
+      if (response.error || !response.data) {
         if (
           response.error &&
+          typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
           await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
@@ -184,7 +173,7 @@ export const removeFromCart = createAsyncThunk(
             : response.message || "Failed to remove item"
         );
       }
-      return cartItemId; // Trả về cartItemId để xóa khỏi state
+      return response.data; // ICart
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to remove item");
     }
@@ -211,7 +200,7 @@ export const createOrder = createAsyncThunk(
       if (!accessToken) {
         throw new Error("No access token available");
       }
-      const response = await createOrderApi(
+      const response: IBackendResponse<IOrderInfo> = await createOrderApi(
         orderData.userId,
         orderData.branchId,
         orderData.shippingAddress,
@@ -221,6 +210,7 @@ export const createOrder = createAsyncThunk(
       if (response.error || !response.data) {
         if (
           response.error &&
+          typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
           await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
@@ -253,72 +243,65 @@ const cartSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Fetch Cart
       .addCase(fetchCart.pending, (state) => {
         state.status = "loading";
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload;
+        state.cart = action.payload; // action.payload là ICart
+        state.error = null;
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       })
+      // Add to Cart
       .addCase(addToCart.pending, (state) => {
         state.status = "loading";
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload; // Cập nhật toàn bộ giỏ hàng
+        state.cart = action.payload; // action.payload là ICart
+        state.error = null;
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       })
+      // Update Quantity
       .addCase(updateQuantity.pending, (state) => {
         state.status = "loading";
       })
       .addCase(updateQuantity.fulfilled, (state, action) => {
         state.status = "succeeded";
-        if (state.cart) {
-          state.cart.cartItems = state.cart.cartItems.map((item) =>
-            item.id === action.payload.id ? action.payload : item
-          );
-          state.cart.totalPrice = state.cart.cartItems.reduce(
-            (total, item) => total + item.priceAtAddition * item.quantity,
-            0
-          );
-        }
+        state.cart = action.payload; // action.payload là ICart
+        state.error = null;
       })
       .addCase(updateQuantity.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       })
+      // Remove from Cart
       .addCase(removeFromCart.pending, (state) => {
         state.status = "loading";
       })
       .addCase(removeFromCart.fulfilled, (state, action) => {
         state.status = "succeeded";
-        if (state.cart) {
-          state.cart.cartItems = state.cart.cartItems.filter(
-            (item) => item.id !== action.payload
-          );
-          state.cart.totalPrice = state.cart.cartItems.reduce(
-            (total, item) => total + item.priceAtAddition * item.quantity,
-            0
-          );
-        }
+        state.cart = action.payload; // action.payload là ICart
+        state.error = null;
       })
       .addCase(removeFromCart.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       })
+      // Create Order
       .addCase(createOrder.pending, (state) => {
         state.status = "loading";
       })
-      .addCase(createOrder.fulfilled, (state, action) => {
+      .addCase(createOrder.fulfilled, (state) => {
         state.status = "succeeded";
-        state.cart = null;
+        state.cart = null; // Xóa giỏ hàng sau khi tạo đơn hàng
         state.error = null;
       })
       .addCase(createOrder.rejected, (state, action) => {

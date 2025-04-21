@@ -1,4 +1,4 @@
-// src/components/menu/ItemCustomizationModal.tsx
+// components/menu/ItemCustomizationModal.tsx
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,29 +6,8 @@ import ModalComponent from "@/components/common/ModalComponent";
 import TextComponent from "@/components/common/TextComponent";
 import ButtonComponent from "@/components/common/ButtonComponent";
 import RowComponent from "@/components/common/RowComponent";
+import LoadingComponent from "@/components/common/LoadingComponent";
 import { Colors } from "@/constants/Colors";
-import { defaultOptions } from "@/data/optionData";
-
-interface IOptionValue {
-  id: number;
-  value: string;
-  additionalPrice: number;
-}
-
-interface IOption {
-  id: number;
-  name: string;
-  description: string;
-  IOptionValues: IOptionValue[];
-}
-
-interface IMenuItem {
-  id: number;
-  name: string;
-  description: string;
-  imageUrl: string;
-  basePrice: number;
-}
 
 interface OptionSelectorProps {
   option: IOption;
@@ -49,15 +28,22 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
     setSelectedOptions((prev) => ({ ...prev, [option.id]: value }));
   };
 
+  // Kiểm tra menuItemOption
+  if (!option.menuItemOption || !Array.isArray(option.menuItemOption)) {
+    return (
+      <TextComponent style={styles.noOptionsText}>
+        Không có tùy chọn khả dụng cho {option.name}.
+      </TextComponent>
+    );
+  }
+
   return (
     <View style={styles.optionContainer}>
-      <TextComponent style={styles.optionName}>
-        {option.name} (Bắt buộc)
-      </TextComponent>
+      <TextComponent style={styles.optionName}>{option.name}</TextComponent>
       <TextComponent style={styles.optionDescription}>
         {option.description}
       </TextComponent>
-      {option.IOptionValues.map((value) => (
+      {option.menuItemOption.map((value) => (
         <TouchableOpacity
           key={value.id}
           style={[
@@ -151,7 +137,8 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
 interface ItemCustomizationModalProps {
   visible: boolean;
   item: IMenuItem | null;
-  categoryId: number | null; // Không sử dụng, nhưng giữ để tương thích
+  options: IOption[];
+  categoryId: number | null;
   onClose: () => void;
   selectedOptions: { [key: number]: IOptionValue };
   setSelectedOptions: React.Dispatch<
@@ -161,11 +148,13 @@ interface ItemCustomizationModalProps {
   setQuantity: React.Dispatch<React.SetStateAction<number>>;
   onConfirm: () => void;
   isDarkMode: boolean;
+  loading: boolean;
 }
 
 const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   visible,
   item,
+  options,
   onClose,
   selectedOptions,
   setSelectedOptions,
@@ -173,10 +162,10 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   setQuantity,
   onConfirm,
   isDarkMode,
+  loading,
 }) => {
   const calculateTotalPrice = () => {
     if (!item) return 0;
-    const options = defaultOptions; // Hoặc để rỗng nếu không dùng tùy chọn
     const optionsPrice = Object.values(selectedOptions).reduce(
       (sum, option) => sum + option.additionalPrice,
       0
@@ -186,8 +175,6 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
 
   if (!item) return null;
 
-  const options = defaultOptions; // Hoặc để rỗng nếu không dùng tùy chọn
-
   return (
     <ModalComponent
       visible={visible}
@@ -196,7 +183,12 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
       style={styles.modalContent}
       titleStyle={styles.modalTitle}
     >
-      {options.length > 0 ? (
+      {loading ? (
+        <LoadingComponent
+          loadingText="Đang tải tùy chọn..."
+          style={styles.loadingContainer}
+        />
+      ) : options.length > 0 ? (
         options.map((option) => (
           <OptionSelector
             key={option.id}
@@ -234,6 +226,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
           onPress={onConfirm}
           type="primary"
           style={styles.addButton}
+          disabled={loading}
         />
       </RowComponent>
     </ModalComponent>
@@ -350,6 +343,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.primary,
     borderRadius: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 100,
   },
 });
 

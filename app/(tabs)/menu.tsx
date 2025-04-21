@@ -1,25 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { Modal, StyleSheet, View } from "react-native";
-import { useTheme } from "@/contexts/ThemeContext";
+// screens/MenuScreen.tsx
+import React, { useState, useEffect, useCallback } from "react";
+import { StyleSheet } from "react-native";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
-import ToastComponent from "@/components/common/ToastComponent";
-import LoadingComponent from "@/components/common/LoadingComponent";
-import CategoryList from "@/components/menu/CategoryList";
-import MenuItemList from "@/components/menu/MenuItemList";
-import ItemCustomizationModal from "@/components/menu/ItemCustomizationModal";
-import { useAppDispatch } from "@/store/store";
-import { addToCart } from "@/store/slices/cartSlice";
-import {
-  getMenuCategoriesApi,
-  getMenuItemsByCategoryApi,
-} from "@/services/api";
+import CategorySection from "@/components/menu/CategorySection";
+import MenuItemsSection from "@/components/menu/MenuItemsSection";
+import ModalSection from "@/components/menu/ModalSection";
+import ToastSection from "@/components/menu/ToastSection";
+import { getMenuCategoriesApi, getOptionsByMenuItemApi } from "@/services/api";
 import { router } from "expo-router";
 
 const MenuScreen = () => {
   console.log("MenuScreen rendered");
-  const { isDarkMode } = useTheme();
-  const dispatch = useAppDispatch();
   const [categories, setCategories] = useState<IMenuCategory[]>([]);
   const [selectedCategory, setSelectedCategory] =
     useState<IMenuCategory | null>(null);
@@ -34,6 +26,8 @@ const MenuScreen = () => {
     [key: number]: IOptionValue;
   }>({});
   const [quantity, setQuantity] = useState(1);
+  const [options, setOptions] = useState<IOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
@@ -44,16 +38,19 @@ const MenuScreen = () => {
       try {
         const response = await getMenuCategoriesApi();
         if (response.error || !response.data) {
-          if (
-            response.error &&
-            response.error.includes("Current user not found")
-          ) {
+          if (response.error?.includes("Current user not found")) {
             router.replace("/login");
           }
           throw new Error(response.message || "Failed to fetch categories");
         }
-        setCategories(response.data);
-        setSelectedCategory(response.data[0] || null);
+        if (response.data.length > 0) {
+          setCategories(response.data);
+          setSelectedCategory(response.data[0]);
+        } else {
+          setToastMessage("Không có danh mục nào khả dụng");
+          setToastType("error");
+          setToastVisible(true);
+        }
       } catch (error: any) {
         setToastMessage(error.message || "Không thể tải danh mục");
         setToastType("error");
@@ -63,185 +60,103 @@ const MenuScreen = () => {
     fetchCategories();
   }, []);
 
-  // Lấy món ăn từ API
-  const fetchMenuItems = async (pageNum: number, categoryId: number | null) => {
-    setLoading(true);
-    try {
-      const pageSize = 10;
-      const response = await getMenuItemsByCategoryApi(
-        pageNum,
-        pageSize,
-        categoryId || 0,
-        "id",
-        "asc"
-      );
-      if (response.error || !response.data) {
-        if (
-          response.error &&
-          response.error.includes("Current user not found")
-        ) {
-          router.replace("/login");
-        }
-        throw new Error(response.message || "Failed to fetch menu items");
-      }
-      setTotalPages(response.data.totalPages);
-      return response.data;
-    } catch (error: any) {
-      setToastMessage(error.message || "Không thể tải món ăn");
-      setToastType("error");
-      setToastVisible(true);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedCategory) {
-      fetchMenuItems(page, selectedCategory.id).then((response) => {
-        setMenuItems((prev) =>
-          page === 1 ? response.content : [...prev, ...response.content]
-        );
-      });
-    }
-  }, [page, selectedCategory]);
-
-  const handleLoadMore = () => {
-    if (!loading && page < totalPages && !refreshing) {
-      setPage((prev) => prev + 1);
-    }
-  };
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    setMenuItems([]);
-    setPage(1);
-    if (selectedCategory) {
-      fetchMenuItems(1, selectedCategory.id).then((response) => {
-        setMenuItems(response.content);
-        setTotalPages(response.totalPages);
-        setRefreshing(false);
-      });
-    } else {
-      setRefreshing(false);
-    }
-  };
-
-  const handleCategoryPress = (category: IMenuCategory) => {
+  const handleCategoryPress = useCallback((category: IMenuCategory) => {
     setSelectedCategory(category);
     setMenuItems([]);
     setPage(1);
-  };
+  }, []);
 
-  const handleAddToCart = (item: IMenuItem) => {
+  const handleAddToCart = useCallback(async (item: IMenuItem) => {
     setSelectedItem(item);
     setSelectedOptions({});
     setQuantity(1);
-    setModalVisible(true);
-  };
-
-  const handleConfirmAdd = () => {
-    if (selectedItem) {
-      if (Object.keys(selectedOptions).length === 0) {
-        setToastMessage("Vui lòng chọn ít nhất một tùy chọn.");
-        setToastType("error");
-        setToastVisible(true);
-        return;
+    setOptionsLoading(true);
+    try {
+      const response = await getOptionsByMenuItemApi(item.id);
+      if (response.error || !response.data) {
+        throw new Error(response.message || "Failed to fetch options");
       }
-      dispatch(
-        addToCart({
-          menuItemId: selectedItem.id,
-          quantity,
-          options: Object.values(selectedOptions),
-        })
-      ).then((action) => {
-        if (addToCart.fulfilled.match(action)) {
-          setToastMessage(`${selectedItem.name} đã được thêm vào giỏ hàng!`);
-          setToastType("success");
-        } else {
-          setToastMessage(
-            (action.payload as string) || "Không thể thêm vào giỏ hàng"
-          );
-          setToastType("error");
-        }
-        setToastVisible(true);
-      });
-      setModalVisible(false);
+      const validOptions = response.data.filter(
+        (option) =>
+          option.menuItemOption && Array.isArray(option.menuItemOption)
+      );
+      console.log("Options from API:", response.data); // Debug
+      setOptions(validOptions);
+      setModalVisible(true);
+    } catch (error: any) {
+      console.error("Error fetching options:", error);
+      setToastMessage(error.message || "Không thể tải tùy chọn món ăn");
+      setToastType("error");
+      setToastVisible(true);
+    } finally {
+      setOptionsLoading(false);
     }
-  };
+  }, []);
 
-  const handleToastHide = () => {
+  const handleModalClose = useCallback(() => {
+    setModalVisible(false);
+    setSelectedItem(null);
+    setSelectedOptions({});
+    setQuantity(1);
+    setOptions([]);
+  }, []);
+
+  const handleToastHide = useCallback(() => {
     setToastVisible(false);
     setToastMessage("");
     setToastType("success");
-  };
+  }, []);
 
   return (
     <ContainerComponent>
-      {loading && !menuItems.length && !refreshing ? (
-        <LoadingComponent
-          loadingText="Đang tải món ăn..."
-          style={styles.loadingContainer}
-          accessibilityLabel="Đang tải danh sách món ăn"
-        />
-      ) : (
-        <>
-          <CategoryList
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onCategoryPress={handleCategoryPress}
-          />
-          <SpaceComponent size={16} />
-          <MenuItemList
-            menuItems={menuItems}
-            loading={loading}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            onLoadMore={handleLoadMore}
-            onAddToCart={handleAddToCart}
-          />
-        </>
-      )}
-      <ItemCustomizationModal
+      <CategorySection
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryPress={handleCategoryPress}
+      />
+      <SpaceComponent size={16} />
+      <MenuItemsSection
+        menuItems={menuItems}
+        setMenuItems={setMenuItems}
+        loading={loading}
+        setLoading={setLoading}
+        refreshing={refreshing}
+        setRefreshing={setRefreshing}
+        page={page}
+        setPage={setPage}
+        totalPages={totalPages}
+        setTotalPages={setTotalPages}
+        selectedCategory={selectedCategory}
+        onAddToCart={handleAddToCart}
+        setToastMessage={setToastMessage}
+        setToastType={setToastType}
+        setToastVisible={setToastVisible}
+      />
+      <ModalSection
         visible={modalVisible}
         item={selectedItem}
-        categoryId={null}
-        onClose={() => setModalVisible(false)}
+        options={options}
+        optionsLoading={optionsLoading}
         selectedOptions={selectedOptions}
         setSelectedOptions={setSelectedOptions}
         quantity={quantity}
         setQuantity={setQuantity}
-        onConfirm={handleConfirmAdd}
-        isDarkMode={isDarkMode}
+        onClose={handleModalClose}
+        setToastMessage={setToastMessage}
+        setToastType={setToastType}
+        setToastVisible={setToastVisible}
       />
-      <Modal
-        animationType="none"
-        transparent={true}
+      <ToastSection
         visible={toastVisible}
-        onRequestClose={handleToastHide}
-      >
-        <View style={styles.toastModalContainer}>
-          <ToastComponent
-            message={toastMessage}
-            type={toastType}
-            visible={toastVisible}
-            onHide={handleToastHide}
-            duration={1200}
-          />
-        </View>
-      </Modal>
+        message={toastMessage}
+        type={toastType}
+        onHide={handleToastHide}
+      />
     </ContainerComponent>
   );
 };
 
 const styles = StyleSheet.create({
-  toastModalContainer: {
-    flex: 1,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

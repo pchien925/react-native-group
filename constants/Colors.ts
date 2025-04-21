@@ -62,16 +62,4 @@ export const Colors = {
   buttonAccent: "#E64A19", // Cam pepperoni, nút nổi bật (ví dụ: "Ưu đãi đặc biệt")
   buttonAccentHover: "#BF360C", // Cam đậm hơn, khi di chuột qua nút nổi bật
   buttonCancel: "#FF9800", // Cam pepperoni, nút hủy (ví dụ: "Hủy đơn hàng")
-
-  // Gradient
-  gradients: {
-    pizzaGlow: ["#D32F2F", "#E64A19"], // Đỏ cà chua đến cam pepperoni
-    cheesyDelight: ["#FFD54F", "#FFFDE7"], // Vàng mozzarella đến kem nhạt
-    basilFresh: ["#388E3C", "#4CAF50"], // Xanh húng quế đến xanh ô liu
-    crustWarmth: ["#5D4037", "#D7CCC8"], // Nâu vỏ bánh đến beige nấm
-    spicyKick: ["#C2185B", "#E64A19"], // Đỏ cherry đến cam pepperoni
-    buttonPrimaryGradient: ["#D32F2F", "#B71C1C"], // Gradient đỏ cho nút chính
-    buttonSecondaryGradient: ["#FFB300", "#FFA000"], // Gradient vàng cho nút phụ
-    buttonAccentGradient: ["#E64A19", "#BF360C"], // Gradient cam cho nút nổi bật
-  },
 };

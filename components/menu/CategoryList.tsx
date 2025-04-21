@@ -1,14 +1,7 @@
-import React from "react";
+// @/components/menu/CategoryList.tsx
+import React, { memo } from "react";
 import { FlatList, View } from "react-native";
-
 import MenuCategoryComponent from "@/components/MenuCategory/MenuCategoryComponent";
-
-interface IMenuCategory {
-  id: number;
-  name: string;
-  description: string;
-  imageUrl: string;
-}
 
 interface CategoryListProps {
   categories: IMenuCategory[];
@@ -21,11 +14,13 @@ const CategoryList: React.FC<CategoryListProps> = ({
   selectedCategory,
   onCategoryPress,
 }) => {
+  console.log("CategoryList rendered");
+
   return (
     <FlatList
       data={categories}
       renderItem={({ item }) => (
-        <View style={{ flex: 1, marginBottom: 24 }}>
+        <View style={{ flex: 1 }}>
           <MenuCategoryComponent
             category={item}
             onPress={() => onCategoryPress(item)}
@@ -36,8 +31,14 @@ const CategoryList: React.FC<CategoryListProps> = ({
       keyExtractor={(item) => item.id.toString()}
       horizontal
       showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingVertical: 16, marginBottom: 8 }}
+      getItemLayout={(data, index) => ({
+        length: 100, // Ước tính chiều rộng của MenuCategoryComponent (có thể điều chỉnh dựa trên globalStyles.menuCategory)
+        offset: 100 * index,
+        index,
+      })}
     />
   );
 };
 
-export default CategoryList;
+export default memo(CategoryList);

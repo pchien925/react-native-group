@@ -1,4 +1,4 @@
-// src/components/home/MenuItemComponent.tsx
+// components/menu/MenuItemComponent.tsx
 import React from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import ImageComponent from "@/components/common/ImageComponent";
@@ -15,13 +15,13 @@ interface IMenuItem {
   basePrice: number;
 }
 
-interface menuItemItemProps {
+interface MenuItemProps {
   menuItem: IMenuItem;
   onPress?: (menuItem: IMenuItem) => void;
   onAddToCart?: (menuItem: IMenuItem) => void;
 }
 
-const MenuItemComponent: React.FC<menuItemItemProps> = ({
+const MenuItemComponent: React.FC<MenuItemProps> = ({
   menuItem,
   onPress,
   onAddToCart,
@@ -29,7 +29,7 @@ const MenuItemComponent: React.FC<menuItemItemProps> = ({
   return (
     <TouchableOpacity
       style={globalStyles.menuItemItem}
-      onPress={() => onPress?.(menuItem)}
+      onPress={() => onPress && onPress(menuItem)}
       accessibilityLabel={menuItem.name}
     >
       <ImageComponent
@@ -51,7 +51,7 @@ const MenuItemComponent: React.FC<menuItemItemProps> = ({
         type="primary"
         style={globalStyles.addToCartButton}
         textStyle={globalStyles.addToCartText}
-        onPress={() => onAddToCart?.(menuItem)}
+        onPress={() => onAddToCart && onAddToCart(menuItem)}
       />
     </TouchableOpacity>
   );

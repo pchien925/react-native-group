@@ -1,6 +1,6 @@
 // components/home/HomeScreen.tsx
-import React, { useState, useEffect } from "react";
-import { Linking, Modal, StyleSheet, View } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { Linking, StyleSheet, View } from "react-native";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
 import CategorySection from "@/components/home/CategorySectionComponent";
@@ -17,23 +17,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import SectionTitleComponent from "@/components/home/SectionTitleComponent";
 import { useAppDispatch } from "@/store/store";
 import { addToCart } from "@/store/slices/cartSlice";
-import { getMenuCategoriesApi, getMenuItemsApi } from "@/services/api";
+import {
+  getMenuCategoriesApi,
+  getMenuItemsApi,
+  getOptionsByMenuItemApi,
+} from "@/services/api";
 import { router } from "expo-router";
-
-// Interfaces
-interface IMenuItem {
-  id: number;
-  name: string;
-  description: string;
-  imageUrl: string;
-  basePrice: number;
-}
-
-interface IOptionValue {
-  id: number;
-  value: string;
-  additionalPrice: number;
-}
 
 const HomeScreen: React.FC = () => {
   console.log("HomeScreen rendered");
@@ -41,11 +30,15 @@ const HomeScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const [categories, setCategories] = useState<IMenuCategory[]>([]);
   const [featuredOffers, setFeaturedOffers] = useState<IMenuItem[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [offersLoading, setOffersLoading] = useState(true);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
     null
   );
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<IMenuItem | null>(null);
+  const [options, setOptions] = useState<IOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<{
     [key: number]: IOptionValue;
   }>({});
@@ -57,13 +50,11 @@ const HomeScreen: React.FC = () => {
   // Lấy danh mục từ API
   useEffect(() => {
     const fetchCategories = async () => {
+      setCategoriesLoading(true);
       try {
         const response = await getMenuCategoriesApi();
         if (response.error || !response.data) {
-          if (
-            response.error &&
-            response.error.includes("Current user not found")
-          ) {
+          if (response.error?.includes("Current user not found")) {
             router.replace("/login");
           }
           throw new Error(response.message || "Failed to fetch categories");
@@ -73,6 +64,8 @@ const HomeScreen: React.FC = () => {
         setToastMessage(error.message || "Không thể tải danh mục");
         setToastType("error");
         setToastVisible(true);
+      } finally {
+        setCategoriesLoading(false);
       }
     };
     fetchCategories();
@@ -81,13 +74,11 @@ const HomeScreen: React.FC = () => {
   // Lấy danh sách món ăn nổi bật từ API
   useEffect(() => {
     const fetchFeaturedOffers = async () => {
+      setOffersLoading(true);
       try {
         const response = await getMenuItemsApi(1, 6, "id", "asc");
         if (response.error || !response.data) {
-          if (
-            response.error &&
-            response.error.includes("Current user not found")
-          ) {
+          if (response.error?.includes("Current user not found")) {
             router.replace("/login");
           }
           throw new Error(
@@ -99,22 +90,42 @@ const HomeScreen: React.FC = () => {
         setToastMessage(error.message || "Không thể tải món nổi bật");
         setToastType("error");
         setToastVisible(true);
+      } finally {
+        setOffersLoading(false);
       }
     };
     fetchFeaturedOffers();
   }, []);
 
-  const handleAddToCart = (item: IMenuItem) => {
+  const handleAddToCart = useCallback(async (item: IMenuItem) => {
     setSelectedItem(item);
     setSelectedOptions({});
     setQuantity(1);
-    setModalVisible(true);
-  };
+    setOptionsLoading(true);
+    try {
+      const response = await getOptionsByMenuItemApi(item.id);
+      if (response.error || !response.data) {
+        throw new Error(response.message || "Failed to fetch options");
+      }
+      const validOptions = response.data.filter(
+        (option) =>
+          option.menuItemOption && Array.isArray(option.menuItemOption)
+      );
+      setOptions(validOptions);
+      setModalVisible(true);
+    } catch (error: any) {
+      console.error("Error fetching options:", error);
+      setToastMessage(error.message || "Không thể tải tùy chọn món ăn");
+      setToastType("error");
+      setToastVisible(true);
+    } finally {
+      setOptionsLoading(false);
+    }
+  }, []);
 
-  const handleConfirmAdd = () => {
+  const handleConfirmAdd = useCallback(() => {
     if (selectedItem) {
-      // Giả định cần chọn ít nhất một tùy chọn
-      if (Object.keys(selectedOptions).length === 0) {
+      if (Object.keys(selectedOptions).length === 0 && options.length > 0) {
         setToastMessage("Vui lòng chọn ít nhất một tùy chọn.");
         setToastType("error");
         setToastVisible(true);
@@ -140,13 +151,21 @@ const HomeScreen: React.FC = () => {
       });
       setModalVisible(false);
     }
-  };
+  }, [dispatch, selectedItem, selectedOptions, options, quantity]);
 
-  const handleToastHide = () => {
+  const handleToastHide = useCallback(() => {
     setToastVisible(false);
     setToastMessage("");
     setToastType("success");
-  };
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    setModalVisible(false);
+    setSelectedItem(null);
+    setSelectedOptions({});
+    setQuantity(1);
+    setOptions([]);
+  }, []);
 
   return (
     <ContainerComponent scrollable>
@@ -171,27 +190,39 @@ const HomeScreen: React.FC = () => {
       <RowComponent
         alignItems="center"
         justifyContent="space-between"
-        style={{
-          paddingHorizontal: 8,
-          paddingVertical: 16,
-          backgroundColor: Colors.backgroundLight,
-          borderRadius: 12,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 3,
-          margin: 8,
-        }}
+        style={[
+          styles.sectionContainer,
+          {
+            backgroundColor: isDarkMode
+              ? Colors.backgroundDark
+              : Colors.backgroundLight,
+            borderColor: isDarkMode ? Colors.borderDark : Colors.borderLight,
+            shadowColor: Colors.black,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          },
+        ]}
         onPress={() => {
           console.log("Navigate to all stores");
+          // TODO: Điều hướng đến màn hình danh sách cửa hàng
         }}
       >
-        <TextComponent type="subheading">Danh sách cửa hàng</TextComponent>
+        <TextComponent
+          type="subheading"
+          style={{
+            color: isDarkMode
+              ? Colors.textDarkPrimary
+              : Colors.textLightPrimary,
+          }}
+        >
+          Danh sách cửa hàng
+        </TextComponent>
         <Ionicons
           name="chevron-forward"
           size={24}
-          color={Colors.backgroundDark}
+          color={isDarkMode ? Colors.textDarkPrimary : Colors.backgroundDark}
         />
       </RowComponent>
       <SpaceComponent size={24} />
@@ -199,26 +230,34 @@ const HomeScreen: React.FC = () => {
       <RowComponent
         alignItems="center"
         justifyContent="space-between"
-        style={{
-          paddingHorizontal: 16,
-          paddingVertical: 16,
-          backgroundColor: Colors.backgroundLight,
-          borderRadius: 12,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 3,
-          margin: 8,
-        }}
+        style={[
+          styles.sectionContainer,
+          {
+            backgroundColor: isDarkMode
+              ? Colors.backgroundDark
+              : Colors.backgroundLight,
+            borderColor: isDarkMode ? Colors.borderDark : Colors.borderLight,
+            shadowColor: Colors.black,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          },
+        ]}
         onPress={() => {
           Linking.openURL(`tel:19990000`);
         }}
       >
-        <TextComponent type="body" style={{ color: Colors.secondary }}>
+        <TextComponent
+          type="body"
+          style={{ color: isDarkMode ? Colors.secondary : Colors.secondary }}
+        >
           Cần sự hỗ trợ?
         </TextComponent>
-        <TextComponent type="body" style={{ color: Colors.secondary }}>
+        <TextComponent
+          type="body"
+          style={{ color: isDarkMode ? Colors.secondary : Colors.secondary }}
+        >
           19990000
         </TextComponent>
       </RowComponent>
@@ -226,42 +265,35 @@ const HomeScreen: React.FC = () => {
       <ItemCustomizationModal
         visible={modalVisible}
         item={selectedItem}
+        options={options}
         categoryId={null}
-        onClose={() => setModalVisible(false)}
+        onClose={handleModalClose}
         selectedOptions={selectedOptions}
         setSelectedOptions={setSelectedOptions}
         quantity={quantity}
         setQuantity={setQuantity}
         onConfirm={handleConfirmAdd}
         isDarkMode={isDarkMode}
+        loading={optionsLoading}
       />
-      <Modal
-        animationType="none"
-        transparent={true}
+      <ToastComponent
+        message={toastMessage}
+        type={toastType}
         visible={toastVisible}
-        onRequestClose={handleToastHide}
-      >
-        <View style={styles.toastModalContainer}>
-          <ToastComponent
-            message={toastMessage}
-            type={toastType}
-            visible={toastVisible}
-            onHide={handleToastHide}
-            duration={1200}
-          />
-        </View>
-      </Modal>
+        onHide={handleToastHide}
+        duration={1200}
+      />
     </ContainerComponent>
   );
 };
 
 const styles = StyleSheet.create({
-  toastModalContainer: {
-    flex: 1,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
+  sectionContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    margin: 8,
   },
 });
 

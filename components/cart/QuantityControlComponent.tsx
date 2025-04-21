@@ -1,15 +1,18 @@
+// components/cart/QuantityControlComponent.tsx
 import React from "react";
 import { Pressable, View, StyleProp, ViewStyle } from "react-native";
 import TextComponent from "../common/TextComponent";
 import { globalStyles } from "@/styles/global.styles";
 import { Colors } from "@/constants/Colors";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
 
 interface QuantityControlProps {
   quantity: number;
   onIncrease: () => void;
   onDecrease: () => void;
-  onRemove?: () => void; // Callback khi giảm từ 1 xuống 0
+  onRemove?: () => void;
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
 }
@@ -23,11 +26,14 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
   disabled = false,
 }) => {
   const { isDarkMode } = useTheme();
-  const isDecreaseDisabled = quantity <= 1 || disabled;
+  const cartStatus = useSelector((state: RootState) => state.cart.status);
+  const isDecreaseDisabled =
+    quantity <= 1 || disabled || cartStatus === "loading";
+  const isIncreaseDisabled = disabled || cartStatus === "loading";
 
   const handleDecrease = () => {
     if (quantity === 1 && onRemove) {
-      onRemove(); // Gọi onRemove thay vì onDecrease khi quantity là 1
+      onRemove();
     } else {
       onDecrease();
     }
@@ -61,7 +67,7 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
           },
         ]}
         onPress={handleDecrease}
-        disabled={disabled}
+        disabled={isDecreaseDisabled}
         accessibilityLabel="Giảm số lượng"
         accessibilityRole="button"
       >
@@ -97,17 +103,17 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
         style={({ pressed }) => [
           globalStyles.quantityButton,
           {
-            backgroundColor: disabled
+            backgroundColor: isIncreaseDisabled
               ? Colors.disabled
               : isDarkMode
               ? Colors.surfaceDark
               : Colors.white,
             borderColor: isDarkMode ? Colors.borderDark : Colors.borderLight,
-            opacity: pressed && !disabled ? 0.7 : 1,
+            opacity: pressed && !isIncreaseDisabled ? 0.7 : 1,
           },
         ]}
         onPress={onIncrease}
-        disabled={disabled}
+        disabled={isIncreaseDisabled}
         accessibilityLabel="Tăng số lượng"
         accessibilityRole="button"
       >
@@ -115,7 +121,7 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
           style={[
             globalStyles.quantityButtonText,
             {
-              color: disabled
+              color: isIncreaseDisabled
                 ? Colors.textLightSecondary
                 : isDarkMode
                 ? Colors.textDarkPrimary

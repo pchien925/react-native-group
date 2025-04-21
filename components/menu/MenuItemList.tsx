@@ -1,19 +1,12 @@
-import React from "react";
+// @/components/menu/MenuItemList.tsx
+import React, { memo } from "react";
 import { FlatList, View, StyleSheet, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import MenuItemComponent from "@/components/MenuItem/MenuItemComponent";
 import TextComponent from "@/components/common/TextComponent";
-import LoadingComponent from "@/components/common/LoadingComponent"; // Import LoadingComponent
+import LoadingComponent from "@/components/common/LoadingComponent";
 import { Colors } from "@/constants/Colors";
 import { ScreenDimensions } from "@/constants/Dimensions";
-
-interface IMenuItem {
-  id: number;
-  name: string;
-  description: string;
-  imageUrl: string;
-  basePrice: number;
-}
 
 interface MenuItemListProps {
   menuItems: IMenuItem[];
@@ -32,6 +25,7 @@ const MenuItemList: React.FC<MenuItemListProps> = ({
   onLoadMore,
   onAddToCart,
 }) => {
+  console.log("MenuItemList rendered");
   const width = ScreenDimensions.WIDTH;
   const numColumns = width > 600 ? 3 : 2;
 
@@ -47,12 +41,17 @@ const MenuItemList: React.FC<MenuItemListProps> = ({
           />
         </View>
       )}
-      keyExtractor={(item) => item.id.toString()}
+      keyExtractor={(item, index) => `${item.id}-${index}`}
       showsVerticalScrollIndicator={false}
       numColumns={numColumns}
       key={`grid-${numColumns}`}
       onEndReached={onLoadMore}
       onEndReachedThreshold={0.5}
+      getItemLayout={(data, index) => ({
+        length: 200, // Ước tính chiều cao của MenuItemComponent (có thể điều chỉnh dựa trên globalStyles.menuItemItem)
+        offset: 200 * Math.floor(index / numColumns),
+        index,
+      })}
       ListFooterComponent={
         loading && !refreshing ? (
           <LoadingComponent
@@ -64,21 +63,11 @@ const MenuItemList: React.FC<MenuItemListProps> = ({
         ) : null
       }
       ListEmptyComponent={
-        loading || refreshing ? (
-          <LoadingComponent
-            loadingText={refreshing ? "Đang làm mới..." : "Đang tải món ăn..."}
-            style={styles.loadingContainer}
-            accessibilityLabel={
-              refreshing
-                ? "Đang làm mới danh sách"
-                : "Đang tải danh sách món ăn"
-            }
-          />
-        ) : (
+        menuItems.length === 0 && !loading && !refreshing ? (
           <TextComponent style={styles.emptyText}>
             Không có món ăn nào trong danh mục này.
           </TextComponent>
-        )
+        ) : null
       }
       refreshControl={
         <RefreshControl
@@ -101,12 +90,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     padding: 20,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: 300,
-  },
   loadingMoreContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -115,4 +98,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MenuItemList;
+export default memo(MenuItemList);

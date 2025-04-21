@@ -1,9 +1,9 @@
 // store/slices/authSlice.ts
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getCurrentUserApi, loginApi } from "@/services/api";
+import { getCurrentUserApi, loginApi, refreshTokenApi } from "@/services/api";
+import { handleApiError } from "@/utils/errorHandler";
 
-// Định nghĩa trạng thái cho auth
 interface AuthState {
   user: IUser | null;
   accessToken: string | null;
@@ -20,7 +20,6 @@ const initialState: AuthState = {
   error: null,
 };
 
-// Async thunk để đăng nhập
 export const login = createAsyncThunk(
   "auth/login",
   async (
@@ -28,40 +27,44 @@ export const login = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response: IBackendResponse<ILoginResponse> = await loginApi(
-        credentials.email,
-        credentials.password
-      );
-      console.log("Login credentials:", credentials.email);
+      const response = await loginApi(credentials.email, credentials.password);
       console.log("Login response:", response);
-
-      if (response.error || !response.data) {
-        throw new Error(
-          typeof response.error === "string"
-            ? response.error
-            : Array.isArray(response.error)
-            ? response.error.join(", ")
-            : response.message || "Failed to login"
-        );
-      }
-      // Kiểm tra và lưu token vào AsyncStorage
-      const { accessToken, refreshToken } = response.data;
-      if (accessToken && refreshToken) {
-        await AsyncStorage.multiSet([
-          ["accessToken", accessToken],
-          ["refreshToken", refreshToken],
-        ]);
-      } else {
-        throw new Error("Invalid login response: Missing tokens");
-      }
-      return response.data; // ILoginResponse: { accessToken, refreshToken, userId }
+      const data = await handleApiError(response, "Failed to login");
+      await AsyncStorage.multiSet([
+        ["accessToken", data.accessToken],
+        ["refreshToken", data.refreshToken],
+      ]);
+      return data; // ILoginResponse
     } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to login");
+      console.error("Login error:", error.message);
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Async thunk để lấy thông tin người dùng hiện tại
+export const refreshToken = createAsyncThunk(
+  "auth/refreshToken",
+  async (_, { rejectWithValue }) => {
+    try {
+      const refreshToken = await AsyncStorage.getItem("refreshToken");
+      if (!refreshToken) {
+        throw new Error("No refresh token available");
+      }
+      const response = await refreshTokenApi(refreshToken);
+      const data = await handleApiError(response, "Failed to refresh token");
+      await AsyncStorage.multiSet([
+        ["accessToken", data.accessToken],
+        ["refreshToken", data.refreshToken],
+      ]);
+      return data; // ILoginResponse
+    } catch (error: any) {
+      console.error("Refresh token error:", error.message);
+      await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const getCurrentUser = createAsyncThunk(
   "auth/getCurrentUser",
   async (_, { getState, rejectWithValue }) => {
@@ -71,31 +74,15 @@ export const getCurrentUser = createAsyncThunk(
       if (!accessToken) {
         throw new Error("No access token available");
       }
-      const response: IBackendResponse<IUser> = await getCurrentUserApi();
-      if (response.error || !response.data) {
-        // Xóa token nếu lỗi là "Current user not found"
-        if (
-          response.error &&
-          response.error.includes("Current user not found")
-        ) {
-          await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
-        }
-        throw new Error(
-          typeof response.error === "string"
-            ? response.error
-            : Array.isArray(response.error)
-            ? response.error.join(", ")
-            : response.message || "Failed to fetch user"
-        );
-      }
-      return response.data; // IUser
+      const response = await getCurrentUserApi();
+      return await handleApiError(response, "Failed to fetch user"); // IUser
     } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to fetch user");
+      console.error("Get current user error:", error.message);
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Async thunk để đăng xuất
 export const logout = createAsyncThunk(
   "auth/logout",
   async (_, { rejectWithValue }) => {
@@ -103,28 +90,23 @@ export const logout = createAsyncThunk(
       await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
       return true;
     } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to logout");
+      console.error("Logout error:", error.message);
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Async thunk để kiểm tra trạng thái xác thực
 export const checkAuth = createAsyncThunk(
   "auth/checkAuth",
   async (_, { dispatch, rejectWithValue }) => {
     try {
       const accessToken = await AsyncStorage.getItem("accessToken");
-      if (accessToken) {
-        await dispatch(getCurrentUser()).unwrap();
-        return accessToken;
-      }
-      return null;
+      if (!accessToken) return null;
+      await dispatch(getCurrentUser()).unwrap();
+      return accessToken;
     } catch (error: any) {
-      // Xóa token nếu lỗi là "Current user not found"
-      if (error.message && error.message.includes("Current user not found")) {
-        await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
-      }
-      return rejectWithValue(error.message || "Failed to check auth");
+      console.error("Check auth error:", error.message);
+      return rejectWithValue(error.message);
     }
   }
 );
@@ -156,6 +138,23 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
+      })
+      .addCase(refreshToken.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(refreshToken.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        state.error = null;
+      })
+      .addCase(refreshToken.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload as string;
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.user = null;
       })
       .addCase(getCurrentUser.pending, (state) => {
         state.status = "loading";
@@ -192,6 +191,7 @@ const authSlice = createSlice({
       .addCase(checkAuth.fulfilled, (state, action) => {
         state.status = action.payload ? "succeeded" : "idle";
         state.accessToken = action.payload;
+        state.error = null;
       })
       .addCase(checkAuth.rejected, (state, action) => {
         state.status = "failed";

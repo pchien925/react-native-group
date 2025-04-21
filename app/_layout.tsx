@@ -25,6 +25,10 @@ const RootLayout = () => {
             options={{ headerShown: true, headerTitle: "Giỏ hàng" }}
           />
           <Stack.Screen
+            name="checkout"
+            options={{ headerShown: true, headerTitle: "Thanh toán" }}
+          />
+          <Stack.Screen
             name="order/[id]"
             options={{
               headerShown: true,

@@ -1,4 +1,4 @@
-// src/components/home/CategoryItem.tsx
+// components/MenuCategory/MenuCategoryComponent.tsx
 import React from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import TextComponent from "@/components/common/TextComponent";
@@ -23,7 +23,7 @@ const MenuCategoryComponent: React.FC<CategoryItemProps> = ({
         globalStyles.menuCategory,
         isSelected && globalStyles.menuCategorySelected,
       ]}
-      onPress={() => onPress?.(category)}
+      onPress={() => onPress && onPress(category)}
       accessibilityLabel={category.name}
       accessibilityState={{ selected: isSelected }}
     >

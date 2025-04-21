@@ -1,4 +1,12 @@
-import axios from "@/services/axios.instance";
+// services/api.ts
+import axios from "./axios.instance";
+
+export const refreshTokenApi = (
+  refreshToken: string
+): Promise<IBackendResponse<ILoginResponse>> => {
+  const url = `/api/v1/auth/refresh-token`;
+  return axios.post(url, { refreshToken });
+};
 
 export const getMenuItemsByCategoryApi = (
   categoryId: number,
@@ -6,14 +14,16 @@ export const getMenuItemsByCategoryApi = (
   size: number,
   sort: string = "id",
   direction: string = "asc"
-) => {
+): Promise<IBackendResponse<IPaginationData<IMenuItem>>> => {
   const url = `/api/v1/menu-items?categoryId=${categoryId}&page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
-  return axios.get<IBackendResponse<IPaginationData<IMenuItem>>>(url);
+  return axios.get(url);
 };
 
-export const getOptionsByMenuItemApi = (menuItemId: number) => {
+export const getOptionsByMenuItemApi = (
+  menuItemId: number
+): Promise<IBackendResponse<IOption[]>> => {
   const url = `/api/v1/menu-items/${menuItemId}/options`;
-  return axios.get<IBackendResponse<IOption[]>>(url);
+  return axios.get(url);
 };
 
 export const getBranchesApi = (
@@ -21,9 +31,14 @@ export const getBranchesApi = (
   size: number,
   sort: string = "id",
   direction: string = "asc"
-) => {
+): Promise<IBackendResponse<IPaginationData<IBranch>>> => {
   const url = `/api/v1/branches?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
-  return axios.get<IBackendResponse<IPaginationData<IBranch>>>(url);
+  return axios.get(url);
+};
+
+export const getAllBranchesApi = (): Promise<IBackendResponse<IBranch[]>> => {
+  const url = `/api/v1/branches/all`;
+  return axios.get(url);
 };
 
 export const createOrderApi = (
@@ -32,21 +47,17 @@ export const createOrderApi = (
   shippingAddress: string,
   note: string,
   paymentMethod: "COD" | "VNPAY" | "MOMO" | "BANK_TRANSFER" | "CREDIT_CARD"
-) => {
-  const url = `/api/v1/orders`;
-  const data = {
-    userId,
-    branchId,
-    shippingAddress,
-    note,
-    paymentMethod,
-  };
-  return axios.post<IBackendResponse<IOrderInfo>>(url, data);
+): Promise<IBackendResponse<IOrderInfo>> => {
+  const url = `/api/v1/orders?userId=${userId}`;
+  const data = { branchId, shippingAddress, note, paymentMethod };
+  return axios.post(url, data);
 };
 
-export const getMenuCategoriesApi = () => {
+export const getMenuCategoriesApi = (): Promise<
+  IBackendResponse<IMenuCategory[]>
+> => {
   const url = `/api/v1/menu-categories/all`;
-  return axios.get<IBackendResponse<IMenuCategory[]>>(url);
+  return axios.get(url);
 };
 
 export const getMenuItemsApi = (
@@ -54,57 +65,93 @@ export const getMenuItemsApi = (
   size: number,
   sort: string = "id",
   direction: string = "asc"
-) => {
+): Promise<IBackendResponse<IPaginationData<IMenuItem>>> => {
   const url = `/api/v1/menu-items?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
-  return axios.get<IBackendResponse<IPaginationData<IMenuItem>>>(url);
+  return axios.get(url);
 };
 
-export const loginApi = (email: string, password: string) => {
+export const loginApi = (
+  email: string,
+  password: string
+): Promise<IBackendResponse<ILoginResponse>> => {
   const url = `/api/v1/auth/sign-in`;
-  const data = {
-    email,
-    password,
-  };
-  return axios.post<IBackendResponse<ILoginResponse>>(url, data, {
+  const data = { email, password };
+  return axios.post(url, data, {
     headers: {
       "Content-Type": "application/json",
     },
   });
 };
 
-export const getCurrentUserApi = () => {
+export const getCurrentUserApi = (): Promise<IBackendResponse<IUser>> => {
   const url = `/api/v1/users/me`;
-  return axios.get<IBackendResponse<IUser>>(url);
+  return axios.get(url);
 };
 
-export const getCartApi = () => {
+export const getCartApi = (): Promise<IBackendResponse<ICart>> => {
   const url = `/api/v1/carts`;
-  return axios.get<IBackendResponse<ICart>>(url);
+  return axios.get(url);
 };
 
 export const addItemToCartApi = (
   menuItemId: number,
   quantity: number,
   options: IOptionValue[]
-) => {
-  const url = `/api/v1/carts`;
+): Promise<IBackendResponse<ICart>> => {
+  const url = `/api/v1/carts/items`;
   const data = {
     menuItemId,
     quantity,
     selectedMenuItemOptionIds: options.map((option) => option.id),
   };
-  return axios.post<IBackendResponse<ICart>>(url, data);
+  return axios.post(url, data);
 };
 
-export const updateQuantityApi = (cartItemId: number, quantity: number) => {
-  const url = `/api/v1/carts/${cartItemId}`;
-  const data = {
-    quantity,
-  };
-  return axios.put<IBackendResponse<ICartItem>>(url, data);
+export const updateQuantityApi = (
+  cartItemId: number,
+  quantity: number
+): Promise<IBackendResponse<ICart>> => {
+  const url = `/api/v1/carts/items/${cartItemId}`;
+  const data = { quantity };
+  return axios.patch(url, data);
 };
 
-export const removeItemFromCartApi = (cartItemId: number) => {
-  const url = `/api/v1/carts/${cartItemId}`;
-  return axios.delete<IBackendResponse<ICartItem>>(url);
+export const removeItemFromCartApi = (
+  cartItemId: number
+): Promise<IBackendResponse<ICart>> => {
+  const url = `/api/v1/carts/items/${cartItemId}`;
+  return axios.delete(url);
+};
+
+export const getMenuItemOptionsApi = (
+  menuItemId: number
+): Promise<IBackendResponse<IOption[]>> => {
+  const url = `/api/v1/menu-items/${menuItemId}/options`;
+  return axios.get(url);
+};
+
+export const getMenuItemByIdApi = (
+  menuItemId: number
+): Promise<IBackendResponse<IMenuItem>> => {
+  const url = `/api/v1/menu-items/${menuItemId}`;
+  return axios.get(url);
+};
+
+export const getUserOrdersApi = (
+  userId: number,
+  page: number,
+  size: number,
+  sort: string = "id",
+  direction: string = "asc"
+): Promise<IBackendResponse<IPaginationData<IOrderSummary>>> => {
+  const url = `/api/v1/users/${userId}/orders?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
+  return axios.get(url);
+};
+
+export const getOrderByIdApi = (
+  orderId: number,
+  userId: number
+): Promise<IBackendResponse<IOrderInfo>> => {
+  const url = `/api/v1/orders/${orderId}?userId=${userId}`;
+  return axios.get(url);
 };

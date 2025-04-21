@@ -31,12 +31,22 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item, style }) => {
   const [showConfirm, setShowConfirm] = React.useState(false);
 
   const handleRemove = () => {
-    setShowConfirm(true); // Hiển thị modal xác nhận
+    setShowConfirm(true);
   };
 
   const confirmRemove = () => {
     dispatch(removeFromCart(item.id));
     setShowConfirm(false);
+  };
+
+  const handleDecrease = () => {
+    if (item.quantity > 1) {
+      dispatch(
+        updateQuantity({ cartItemId: item.id, quantity: item.quantity - 1 })
+      );
+    } else {
+      setShowConfirm(true); // Hiển thị modal xác nhận xóa khi quantity = 1
+    }
   };
 
   return (
@@ -80,10 +90,9 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item, style }) => {
           >
             {item.menuItem.name}
           </TextComponent>
-          {/* Hiển thị options theo chiều dọc */}
-          {Array.isArray(item.options) && item.options.length > 0 ? (
+          {item.selectedOptions && item.selectedOptions.length > 0 ? (
             <View style={styles.optionsContainer}>
-              {item.options.map((opt) => (
+              {item.selectedOptions.map((opt) => (
                 <TextComponent
                   key={opt.id}
                   type="caption"
@@ -142,14 +151,7 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item, style }) => {
               })
             )
           }
-          onDecrease={() =>
-            dispatch(
-              updateQuantity({
-                cartItemId: item.id,
-                quantity: item.quantity - 1,
-              })
-            )
-          }
+          onDecrease={handleDecrease}
           onRemove={handleRemove}
           style={styles.quantityContainer}
         />
@@ -194,10 +196,6 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item, style }) => {
   );
 };
 
-CartItemComponent.displayName = "CartItemComponent";
-
-export default React.memo(CartItemComponent);
-
 const styles = StyleSheet.create({
   cartItemContainer: {
     flexDirection: "row",
@@ -233,11 +231,11 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     marginTop: 6,
-    flexDirection: "column", // Hiển thị options theo chiều dọc
+    flexDirection: "column",
   },
   cartItemOption: {
     fontSize: 12,
-    marginVertical: 2, // Khoảng cách giữa các dòng option
+    marginVertical: 2,
   },
   cartItemPrice: {
     marginTop: 6,
@@ -258,3 +256,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+
+export default React.memo(CartItemComponent);
