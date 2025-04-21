@@ -1,8 +1,8 @@
 import React from "react";
-import { Image, ImageProps, ImageStyle } from "react-native";
+import { Image, ImageProps, ImageStyle, StyleProp } from "react-native";
 
 interface ImageComponentProps extends ImageProps {
-  style?: ImageStyle;
+  style?: StyleProp<ImageStyle>;
 }
 
 const ImageComponent: React.FC<ImageComponentProps> = ({ style, ...props }) => {

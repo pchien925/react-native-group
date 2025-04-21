@@ -1,5 +1,10 @@
 import React from "react";
-import { TextStyle, ViewStyle, TouchableOpacity } from "react-native";
+import {
+  TextStyle,
+  ViewStyle,
+  TouchableOpacity,
+  StyleProp,
+} from "react-native";
 import TextComponent from "./TextComponent";
 import ImageComponent from "./ImageComponent";
 import { Colors } from "@/constants/Colors";
@@ -10,9 +15,9 @@ interface CardProps {
   title?: string;
   content?: string;
   children?: React.ReactNode;
-  style?: ViewStyle;
-  titleStyle?: TextStyle;
-  contentStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  titleStyle?: StyleProp<TextStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
   imageHeight?: number;
   onPress?: () => void;
   imageUrl?: string;

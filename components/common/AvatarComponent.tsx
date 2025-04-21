@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, Image, ViewStyle, ImageStyle } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  ViewStyle,
+  ImageStyle,
+  StyleProp,
+} from "react-native";
 import { Colors } from "@/constants/Colors";
 import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -8,7 +15,7 @@ interface AvatarProps {
   imageUrl?: string;
   name?: string;
   size?: number;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   imageStyle?: ImageStyle;
 }
 

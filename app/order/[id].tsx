@@ -8,16 +8,18 @@ import ButtonComponent from "@/components/common/ButtonComponent";
 import CardComponent from "@/components/common/CardComponent";
 import RowComponent from "@/components/common/RowComponent";
 import TagComponent from "@/components/common/TagComponent";
-import ProgressComponent from "@/components/common/ProgressComponent";
 import ImageComponent from "@/components/common/ImageComponent";
+import ToastComponent from "@/components/common/ToastComponent";
 import { Colors } from "@/constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
 
+// Mock data matching IOrderDetail
 const fetchOrderDetail = async (orderId: number): Promise<IOrderDetail> => {
-  // Giả lập dữ liệu (thay bằng API thật)
   return {
     id: orderId,
     orderCode: `ORD${orderId}`,
     totalPrice: 150000,
+    orderStatus: "PROCESSING", // Set to PROCESSING to test cancel button
     createdAt: new Date().toLocaleString("vi-VN"),
     updatedAt: new Date().toLocaleString("vi-VN"),
     note: "Giao hàng nhanh, thêm nhiều phô mai",
@@ -64,6 +66,34 @@ const fetchOrderDetail = async (orderId: number): Promise<IOrderDetail> => {
           },
         ],
       },
+      {
+        id: 2,
+        item: {
+          id: 2,
+          name: "Pizza Hải sản",
+          description: "Pizza với tôm, mực, và phô mai mozzarella thơm ngon",
+          imageUrl:
+            "https://img-global.cpcdn.com/recipes/cfa5ea1331a1b04e/680x482cq70/mi-y-cua-4ps-recipe-main-photo.jpg",
+          basePrice: 55000,
+        },
+        quantity: 2,
+        pricePerUnit: 60000,
+        totalPrice: 120000,
+        options: [
+          {
+            id: 1,
+            optionName: "Kích thước",
+            optionValue: "Lớn",
+            additionalPrice: 10000,
+          },
+          {
+            id: 2,
+            optionName: "Viền",
+            optionValue: "Phô mai",
+            additionalPrice: 5000,
+          },
+        ],
+      },
     ],
     paymentInfo: [
       {
@@ -73,30 +103,6 @@ const fetchOrderDetail = async (orderId: number): Promise<IOrderDetail> => {
         transactionCode: "TXN123456",
         paidAt: new Date().toLocaleString("vi-VN"),
         amount: 150000,
-      },
-    ],
-    shipmentInfo: [
-      {
-        id: 1,
-        deliveryStatus: "Đang giao",
-        trackingHistory: [
-          {
-            id: 1,
-            deliveryStatus: "Đã nhận đơn",
-            note: "Đơn hàng đã được xác nhận",
-            eventTime: new Date().toLocaleString("vi-VN"),
-            locationLatitude: 10.7769,
-            locationLongitude: 106.7009,
-          },
-          {
-            id: 2,
-            deliveryStatus: "Đang giao",
-            note: "Đang giao đến khách hàng",
-            eventTime: new Date().toLocaleString("vi-VN"),
-            locationLatitude: 10.7769,
-            locationLongitude: 106.7009,
-          },
-        ],
       },
     ],
     pointsEarnedOrSpent: 15,
@@ -111,6 +117,15 @@ const OrderDetailScreen = () => {
     "idle" | "loading" | "succeeded" | "failed"
   >("idle");
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+    visible: boolean;
+  }>({
+    message: "",
+    type: "success",
+    visible: false,
+  });
 
   useEffect(() => {
     if (status === "idle" && id) {
@@ -127,43 +142,37 @@ const OrderDetailScreen = () => {
     }
   }, [status, id]);
 
-  const getDeliveryProgress = (status: string): number => {
-    switch (status) {
-      case "Đã nhận đơn":
-        return 25;
-      case "Đang xử lý":
-        return 50;
-      case "Đang giao":
-        return 75;
-      case "Đã giao":
-        return 100;
-      default:
-        return 0;
-    }
-  };
-
-  const getDeliveryTagType = (
+  const getStatusTagType = (
     status: string
   ): "success" | "warning" | "error" | "info" => {
     switch (status) {
-      case "Đã giao":
+      case "COMPLETED":
         return "success";
-      case "Đang giao":
-      case "Đang xử lý":
+      case "SHIPPING":
+      case "PROCESSING":
         return "warning";
-      case "Đã hủy":
+      case "CANCELED":
         return "error";
       default:
         return "info";
     }
   };
 
-  const renderOrderItem = (item: IOrderItem) => (
-    <CardComponent
-      key={item.id}
-      style={styles.orderItemCard}
-      onPress={() => router.push(`/menu-item/${item.item.id}`)}
-    >
+  const handleCancelOrder = () => {
+    // Giả lập hủy đơn hàng (thay bằng API thực tế nếu có)
+    setToast({
+      message: "Đã gửi yêu cầu hủy đơn hàng!",
+      type: "success",
+      visible: true,
+    });
+    // Cập nhật trạng thái đơn hàng (giả lập)
+    if (orderDetail) {
+      setOrderDetail({ ...orderDetail, orderStatus: "CANCELED" });
+    }
+  };
+
+  const renderOrderItem = (item: IOrderItem, index: number) => (
+    <CardComponent key={item.id} style={styles.orderItemCard}>
       <RowComponent alignItems="flex-start">
         <ImageComponent
           source={{ uri: item.item.imageUrl }}
@@ -171,18 +180,15 @@ const OrderDetailScreen = () => {
         />
         <View style={styles.itemDetails}>
           <TextComponent type="subheading" style={styles.itemName}>
-            {item.item.name} x {item.quantity}
+            {index + 1}. {item.item.name} x {item.quantity}
           </TextComponent>
           <TextComponent type="caption" style={styles.itemDescription}>
             {item.item.description}
           </TextComponent>
-          <TextComponent type="caption" style={styles.itemPrice}>
-            Giá gốc: {item.item.basePrice.toLocaleString("vi-VN")} VNĐ
+          <TextComponent type="caption" style={styles.optionText}>
+            Giá cơ bản: {item.item.basePrice.toLocaleString("vi-VN")} VNĐ
           </TextComponent>
-          <TextComponent type="caption" style={styles.itemPrice}>
-            Giá mỗi món: {item.pricePerUnit.toLocaleString("vi-VN")} VNĐ
-          </TextComponent>
-          {item.options.map((option: IOrderOption) => (
+          {item.options.map((option) => (
             <TextComponent
               key={option.id}
               type="caption"
@@ -197,13 +203,6 @@ const OrderDetailScreen = () => {
           </TextComponent>
         </View>
       </RowComponent>
-      <ButtonComponent
-        title="Xem chi tiết món"
-        type="text"
-        onPress={() => router.push(`/menu-item/${item.item.id}`)}
-        style={styles.viewItemButton}
-        textStyle={styles.viewItemButtonText}
-      />
     </CardComponent>
   );
 
@@ -238,25 +237,27 @@ const OrderDetailScreen = () => {
   return (
     <ContainerComponent style={styles.container} scrollable>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Tiêu đề đơn hàng */}
+        {/* Header */}
         <CardComponent
           title={`Đơn hàng: ${orderDetail.orderCode}`}
           style={styles.headerCard}
           titleStyle={styles.headerTitle}
         >
           <RowComponent justifyContent="space-between">
-            <TextComponent type="caption">
+            <TextComponent type="caption" style={styles.headerText}>
               Ngày đặt: {orderDetail.createdAt}
             </TextComponent>
             <TagComponent
               text={
-                orderDetail.paymentInfo?.[0]?.paymentStatus || "Chưa thanh toán"
+                orderDetail.orderStatus === "COMPLETED"
+                  ? "Đã giao"
+                  : orderDetail.orderStatus === "SHIPPING"
+                  ? "Đang giao"
+                  : orderDetail.orderStatus === "PROCESSING"
+                  ? "Đang xử lý"
+                  : "Đã hủy"
               }
-              type={
-                orderDetail.paymentInfo?.[0]?.paymentStatus === "Đã thanh toán"
-                  ? "success"
-                  : "warning"
-              }
+              type={getStatusTagType(orderDetail.orderStatus)}
             />
           </RowComponent>
         </CardComponent>
@@ -265,22 +266,82 @@ const OrderDetailScreen = () => {
 
         {/* Thông tin khách hàng */}
         <CardComponent title="Thông tin khách hàng" style={styles.infoCard}>
-          <TextComponent>Tên: {orderDetail.userInfo.fullName}</TextComponent>
-          <TextComponent>Email: {orderDetail.userInfo.email}</TextComponent>
-          <TextComponent>SĐT: {orderDetail.userInfo.phone}</TextComponent>
-          <TextComponent>Địa chỉ: {orderDetail.shippingAddress}</TextComponent>
+          <RowComponent alignItems="center">
+            <Ionicons
+              name="person-outline"
+              size={20}
+              color={Colors.iconActive}
+              style={styles.icon}
+            />
+            <TextComponent style={styles.infoText}>
+              {orderDetail.userInfo.fullName}
+            </TextComponent>
+          </RowComponent>
+          <RowComponent alignItems="center">
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color={Colors.iconActive}
+              style={styles.icon}
+            />
+            <TextComponent style={styles.infoText}>
+              {orderDetail.userInfo.email}
+            </TextComponent>
+          </RowComponent>
+          <RowComponent alignItems="center">
+            <Ionicons
+              name="call-outline"
+              size={20}
+              color={Colors.iconActive}
+              style={styles.icon}
+            />
+            <TextComponent style={styles.infoText}>
+              {orderDetail.userInfo.phone}
+            </TextComponent>
+          </RowComponent>
+          <RowComponent alignItems="center">
+            <Ionicons
+              name="location-outline"
+              size={20}
+              color={Colors.iconActive}
+              style={styles.icon}
+            />
+            <TextComponent style={styles.infoText}>
+              {orderDetail.shippingAddress}
+            </TextComponent>
+          </RowComponent>
         </CardComponent>
 
         <SpaceComponent size={16} />
 
         {/* Thông tin chi nhánh */}
         <CardComponent title="Chi nhánh" style={styles.infoCard}>
-          <TextComponent>Tên: {orderDetail.branchInfo.name}</TextComponent>
-          <TextComponent>
-            Địa chỉ: {orderDetail.branchInfo.address}
-          </TextComponent>
+          <RowComponent alignItems="center">
+            <Ionicons
+              name="storefront-outline"
+              size={20}
+              color={Colors.iconActive}
+              style={styles.icon}
+            />
+            <TextComponent style={styles.infoText}>
+              {orderDetail.branchInfo.name}
+            </TextComponent>
+          </RowComponent>
+          <RowComponent alignItems="center">
+            <Ionicons
+              name="location-outline"
+              size={20}
+              color={Colors.iconActive}
+              style={styles.icon}
+            />
+            <TextComponent style={styles.infoText}>
+              {orderDetail.branchInfo.address}
+            </TextComponent>
+          </RowComponent>
           <RowComponent justifyContent="space-between">
-            <TextComponent>SĐT: {orderDetail.branchInfo.phone}</TextComponent>
+            <TextComponent style={styles.infoText}>
+              SĐT: {orderDetail.branchInfo.phone}
+            </TextComponent>
             <ButtonComponent
               title="Liên hệ"
               type="outline"
@@ -288,13 +349,14 @@ const OrderDetailScreen = () => {
                 Linking.openURL(`tel:${orderDetail.branchInfo.phone}`)
               }
               style={styles.contactButton}
+              textStyle={styles.contactButtonText}
             />
           </RowComponent>
         </CardComponent>
 
         <SpaceComponent size={16} />
 
-        {/* Thông tin sản phẩm */}
+        {/* Sản phẩm */}
         <TextComponent type="subheading" style={styles.sectionTitle}>
           Sản phẩm
         </TextComponent>
@@ -302,81 +364,69 @@ const OrderDetailScreen = () => {
 
         <SpaceComponent size={16} />
 
-        {/* Thông tin vận chuyển */}
-        {orderDetail.shipmentInfo && (
-          <>
-            <TextComponent type="subheading" style={styles.sectionTitle}>
-              Tiến độ vận chuyển
-            </TextComponent>
-            <CardComponent style={styles.infoCard}>
-              <RowComponent justifyContent="space-between">
-                <TextComponent>Trạng thái:</TextComponent>
-                <TagComponent
-                  text={orderDetail.shipmentInfo[0]?.deliveryStatus}
-                  type={getDeliveryTagType(
-                    orderDetail.shipmentInfo[0]?.deliveryStatus
-                  )}
-                />
-              </RowComponent>
-              <ProgressComponent
-                progress={getDeliveryProgress(
-                  orderDetail.shipmentInfo[0]?.deliveryStatus
-                )}
-                style={styles.progressBar}
-              />
-              {orderDetail.shipmentInfo[0]?.trackingHistory.map((event) => (
-                <TextComponent
-                  key={event.id}
-                  type="caption"
-                  style={styles.trackingText}
-                >
-                  {event.eventTime}: {event.deliveryStatus} - {event.note}
-                </TextComponent>
-              ))}
-            </CardComponent>
-            <SpaceComponent size={16} />
-          </>
-        )}
-
         {/* Thông tin thanh toán */}
-        {orderDetail.paymentInfo && (
+        {orderDetail.paymentInfo && orderDetail.paymentInfo.length > 0 && (
           <>
             <TextComponent type="subheading" style={styles.sectionTitle}>
               Thông tin thanh toán
             </TextComponent>
             <CardComponent style={styles.infoCard}>
-              <TextComponent>
-                Phương thức: {orderDetail.paymentInfo[0]?.paymentMethod}
-              </TextComponent>
-              <TextComponent>
-                Trạng thái: {orderDetail.paymentInfo[0]?.paymentStatus}
-              </TextComponent>
-              <TextComponent>
-                Mã giao dịch: {orderDetail.paymentInfo[0]?.transactionCode}
-              </TextComponent>
-              <TextComponent>
-                Thời gian: {orderDetail.paymentInfo[0]?.paidAt}
+              <RowComponent alignItems="center">
+                <Ionicons
+                  name="card-outline"
+                  size={20}
+                  color={Colors.iconActive}
+                  style={styles.icon}
+                />
+                <TextComponent style={styles.infoText}>
+                  Phương thức: {orderDetail.paymentInfo[0].paymentMethod}
+                </TextComponent>
+              </RowComponent>
+              <RowComponent alignItems="center">
+                <Ionicons
+                  name="checkmark-done-outline"
+                  size={20}
+                  color={Colors.iconActive}
+                  style={styles.icon}
+                />
+                <TextComponent style={styles.infoText}>
+                  Trạng thái: {orderDetail.paymentInfo[0].paymentStatus}
+                </TextComponent>
+              </RowComponent>
+              <TextComponent style={styles.infoText}>
+                Mã giao dịch: {orderDetail.paymentInfo[0].transactionCode}
               </TextComponent>
             </CardComponent>
-            <SpaceComponent size={16} />
           </>
         )}
 
+        <SpaceComponent size={16} />
+
         {/* Điểm thưởng */}
-        {orderDetail.pointsEarnedOrSpent && (
-          <>
-            <TextComponent type="subheading" style={styles.sectionTitle}>
-              Điểm thưởng
-            </TextComponent>
-            <CardComponent style={styles.infoCard}>
-              <TextComponent>
-                {orderDetail.loyaltyTransactionDescription} (
-                {orderDetail.pointsEarnedOrSpent} điểm)
+        {orderDetail.pointsEarnedOrSpent !== undefined &&
+          orderDetail.loyaltyTransactionDescription && (
+            <>
+              <TextComponent type="subheading" style={styles.sectionTitle}>
+                Điểm thưởng
               </TextComponent>
-            </CardComponent>
-            <SpaceComponent size={16} />
-          </>
-        )}
+              <CardComponent style={styles.infoCard}>
+                <RowComponent alignItems="center">
+                  <Ionicons
+                    name="star-outline"
+                    size={20}
+                    color={Colors.iconActive}
+                    style={styles.icon}
+                  />
+                  <TextComponent style={styles.infoText}>
+                    {orderDetail.loyaltyTransactionDescription} (
+                    {orderDetail.pointsEarnedOrSpent} điểm)
+                  </TextComponent>
+                </RowComponent>
+              </CardComponent>
+            </>
+          )}
+
+        <SpaceComponent size={16} />
 
         {/* Ghi chú */}
         {orderDetail.note && (
@@ -385,16 +435,29 @@ const OrderDetailScreen = () => {
               Ghi chú
             </TextComponent>
             <CardComponent style={styles.infoCard}>
-              <TextComponent>{orderDetail.note}</TextComponent>
+              <RowComponent alignItems="center">
+                <Ionicons
+                  name="document-text-outline"
+                  size={20}
+                  color={Colors.iconActive}
+                  style={styles.icon}
+                />
+                <TextComponent style={styles.infoText}>
+                  {orderDetail.note}
+                </TextComponent>
+              </RowComponent>
             </CardComponent>
-            <SpaceComponent size={16} />
           </>
         )}
+
+        <SpaceComponent size={16} />
 
         {/* Tổng cộng */}
         <CardComponent style={styles.totalCard}>
           <RowComponent justifyContent="space-between">
-            <TextComponent type="subheading">Tổng cộng</TextComponent>
+            <TextComponent type="subheading" style={styles.totalText}>
+              Tổng cộng
+            </TextComponent>
             <TextComponent type="subheading" style={styles.totalPrice}>
               {orderDetail.totalPrice.toLocaleString("vi-VN")} VNĐ
             </TextComponent>
@@ -410,17 +473,29 @@ const OrderDetailScreen = () => {
             type="outline"
             onPress={() => router.back()}
             style={styles.backButton}
+            textStyle={styles.backButtonText}
           />
-          <ButtonComponent
-            title="Đặt lại"
-            type="primary"
-            onPress={() => router.push("/(tabs)/menu")}
-            style={styles.reorderButton}
-          />
+          {orderDetail.orderStatus === "PROCESSING" && (
+            <ButtonComponent
+              title="Hủy đơn"
+              type="outline"
+              onPress={handleCancelOrder}
+              style={[styles.backButton, { borderColor: Colors.error }]}
+              textStyle={[styles.backButtonText, { color: Colors.error }]}
+            />
+          )}
         </RowComponent>
 
         <SpaceComponent size={16} />
       </ScrollView>
+      <ToastComponent
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={() => setToast({ ...toast, visible: false })}
+        duration={3000}
+        style={styles.toast}
+      />
     </ContainerComponent>
   );
 };
@@ -430,34 +505,35 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: Colors.backgroundLight,
   },
-  loadingText: {
-    textAlign: "center",
-    marginTop: 20,
-    color: Colors.textLightPrimary,
-  },
-  errorCard: {
-    backgroundColor: Colors.surfaceLight,
-    borderColor: Colors.error,
-    borderWidth: 1,
-  },
   headerCard: {
-    backgroundColor: Colors.surfaceLight,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.basil,
+    borderColor: Colors.olive,
     borderWidth: 1,
-    elevation: 5,
+    borderRadius: 12,
+    padding: 16,
+    elevation: 4,
   },
   headerTitle: {
-    color: Colors.primary,
-    fontSize: 20,
+    color: Colors.white,
+    fontSize: 18,
     fontWeight: "700",
   },
+  headerText: {
+    color: Colors.buttonTextPrimary,
+  },
   infoCard: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.garlicCream,
+    borderColor: Colors.mushroom,
+    borderWidth: 1,
     padding: 16,
     borderRadius: 12,
+    elevation: 3,
+    marginVertical: 8,
   },
   orderItemCard: {
     backgroundColor: Colors.garlicCream,
+    borderColor: Colors.mushroom,
+    borderWidth: 1,
     marginVertical: 8,
     padding: 12,
     borderRadius: 12,
@@ -465,39 +541,39 @@ const styles = StyleSheet.create({
   },
   totalCard: {
     backgroundColor: Colors.mozzarella,
-    padding: 8,
+    borderColor: Colors.mushroom,
+    borderWidth: 1,
+    padding: 16,
     borderRadius: 12,
     elevation: 4,
-    overflow: "hidden",
-  },
-  totalGradient: {
-    padding: 16,
   },
   sectionTitle: {
     color: Colors.textLightPrimary,
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 12,
     marginLeft: 8,
   },
   itemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 120,
+    height: 120,
+    borderRadius: 12,
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: Colors.mozzarella,
   },
   itemDetails: {
     flex: 1,
   },
   itemName: {
     color: Colors.textLightPrimary,
-    fontWeight: "600",
+    fontWeight: "700",
+    fontSize: 16,
   },
   itemDescription: {
     color: Colors.textLightSecondary,
     marginVertical: 4,
-    lineHeight: 16,
-  },
-  itemPrice: {
-    color: Colors.textLightSecondary,
+    lineHeight: 18,
   },
   optionText: {
     marginLeft: 8,
@@ -508,39 +584,63 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "right",
     color: Colors.pepperoni,
-  },
-  totalPrice: {
-    color: Colors.pepperoni,
     fontWeight: "700",
   },
-  progressBar: {
-    marginVertical: 8,
+  totalText: {
+    color: Colors.textLightPrimary,
+    fontWeight: "700",
   },
-  trackingText: {
-    marginTop: 4,
-    color: Colors.textLightSecondary,
+  totalPrice: {
+    color: Colors.accent,
+    fontWeight: "700",
+    fontSize: 18,
   },
   backButton: {
     flex: 1,
     marginRight: 8,
     borderColor: Colors.crust,
+    borderWidth: 1,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
   },
-  reorderButton: {
-    flex: 1,
-    marginLeft: 8,
-    backgroundColor: Colors.buttonPrimary,
+  backButtonText: {
+    color: Colors.textLightPrimary,
+    fontSize: 16,
   },
   contactButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
+    borderRadius: 8,
+    borderColor: Colors.buttonTertiary,
+    borderWidth: 1,
   },
-  viewItemButton: {
-    marginTop: 8,
-    paddingVertical: 4,
+  contactButtonText: {
+    color: Colors.buttonTertiary,
+    fontSize: 14,
   },
-  viewItemButtonText: {
-    color: Colors.buttonAccent,
-    fontSize: 12,
+  icon: {
+    marginRight: 8,
+  },
+  infoText: {
+    color: Colors.textLightPrimary,
+    fontSize: 14,
+  },
+  loadingText: {
+    textAlign: "center",
+    marginTop: 20,
+    color: Colors.textLightPrimary,
+  },
+  errorCard: {
+    backgroundColor: Colors.garlicCream,
+    borderColor: Colors.error,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  toast: {
+    borderRadius: 8,
+    padding: 12,
+    marginHorizontal: 16,
+    bottom: 20,
   },
 });
 

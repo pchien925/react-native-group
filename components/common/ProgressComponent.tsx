@@ -1,12 +1,12 @@
 import React from "react";
-import { View, ViewStyle } from "react-native";
+import { StyleProp, View, ViewStyle } from "react-native";
 import { Colors } from "@/constants/Colors";
 import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 
 interface ProgressProps {
   progress: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 const ProgressComponent: React.FC<ProgressProps> = ({ progress, style }) => {

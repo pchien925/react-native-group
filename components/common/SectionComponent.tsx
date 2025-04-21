@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ViewStyle, TextStyle } from "react-native";
+import { View, Text, StyleProp, ViewStyle, TextStyle } from "react-native";
 import { Colors } from "@/constants/Colors";
 import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -7,8 +7,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 interface SectionProps {
   title?: string;
   children: React.ReactNode;
-  style?: ViewStyle;
-  titleStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  titleStyle?: StyleProp<TextStyle>;
 }
 
 const SectionComponent: React.FC<SectionProps> = ({

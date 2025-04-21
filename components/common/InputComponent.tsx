@@ -3,6 +3,7 @@ import {
   TextInput,
   View,
   TextInputProps,
+  StyleProp,
   ViewStyle,
   TextStyle,
 } from "react-native";
@@ -12,8 +13,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 
 interface InputProps extends TextInputProps {
   error?: boolean;
-  style?: ViewStyle | ViewStyle[];
-  inputStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  inputStyle?: StyleProp<TextStyle>;
 }
 
 const InputComponent: React.FC<InputProps> = ({

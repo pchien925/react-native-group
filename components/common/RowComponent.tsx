@@ -1,10 +1,10 @@
 import React from "react";
-import { TouchableOpacity, View, ViewStyle } from "react-native";
+import { TouchableOpacity, View, StyleProp, ViewStyle } from "react-native";
 import { globalStyles } from "@/styles/global.styles";
 
 interface RowProps {
   children: React.ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   justifyContent?:
     | "flex-start"
     | "flex-end"

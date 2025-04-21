@@ -1,5 +1,7 @@
+// services/axios.instance.ts
 import axios from "axios";
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const backendUrl =
   Platform.OS === "ios"
@@ -14,29 +16,29 @@ const instance = axios.create({
   },
 });
 
-// Add a request interceptor
+// Request interceptor để thêm Authorization header
 instance.interceptors.request.use(
-  function (config) {
-    // Do something before request is sent
+  async (config) => {
+    const accessToken = await AsyncStorage.getItem("accessToken");
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
     return config;
   },
-  function (error) {
-    // Do something with request error
+  (error) => {
     return Promise.reject(error);
   }
 );
 
-// Add a response interceptor
+// Response interceptor
 instance.interceptors.response.use(
-  function (response) {
-    // Any status code that lie within the range of 2xx cause this function to trigger
-    // Do something with response data
-    if (response.data) return response.data;
+  (response) => {
+    if (response.data) return response.data; // Trả về IBackendResponse
     return response;
   },
-  function (error) {
+  (error) => {
     if (error?.response?.data) {
-      return error?.response?.data;
+      return error?.response?.data; // Trả về IBackendResponse
     }
     return Promise.reject(error);
   }

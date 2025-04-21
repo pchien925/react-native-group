@@ -87,7 +87,7 @@ declare global {
     id: number;
     userInfo: IUserInfo;
     orderCode: string;
-    orderStatus: string;
+    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELED";
     totalPrice: number;
     branchName: string;
     createdAt: string;
@@ -135,6 +135,7 @@ declare global {
     id: number;
     orderCode: string;
     totalPrice: number;
+    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELED";
     createdAt: string;
     updatedAt: string;
     note: string;
@@ -144,8 +145,35 @@ declare global {
     branchInfo: IBranchInfo;
     items: IOrderItem[];
     paymentInfo?: IPaymentInfo[];
-    shipmentInfo?: IShipmentInfo[];
     pointsEarnedOrSpent?: number;
     loyaltyTransactionDescription?: string;
+  }
+
+  interface IOrderInfo {
+    id: number;
+    orderCode: string;
+    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELED";
+    totalPrice: number;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  interface ILoginResponse {
+    accessToken: string;
+    refreshToken: string;
+    userId: number;
+  }
+
+  interface IUser {
+    id: number;
+    fullName: string;
+    email: string;
+    phone: string;
+    dob: string;
+    avatar: string | null;
+    gender: "MALE" | "FEMALE" | "OTHER";
+    address: string;
+    status: "ACTIVE" | "INACTIVE";
+    loyaltyPointsBalance: number;
   }
 }

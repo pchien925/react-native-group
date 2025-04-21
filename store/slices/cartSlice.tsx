@@ -1,34 +1,14 @@
+// store/slices/cartSlice.ts
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { sampleCart } from "@/data/cartData";
-
-// Interfaces
-export interface IMenuItem {
-  id: number;
-  name: string;
-  description: string;
-  imageUrl: string;
-  basePrice: number;
-}
-
-export interface IOptionValue {
-  id: number;
-  value: string;
-  additionalPrice: number;
-}
-
-export interface ICartItem {
-  id: number;
-  quantity: number;
-  priceAtAddition: number;
-  menuItem: IMenuItem;
-  options: IOptionValue[];
-}
-
-export interface ICart {
-  id: number;
-  cartItems: ICartItem[];
-  totalPrice: number;
-}
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  getCartApi,
+  createOrderApi,
+  updateQuantityApi,
+  removeItemFromCartApi,
+  addItemToCartApi,
+} from "@/services/api";
+import { router } from "expo-router";
 
 interface CartState {
   cart: ICart | null;
@@ -42,85 +22,221 @@ const initialState: CartState = {
   error: null,
 };
 
-// Async thunks for API simulation
+// Async thunk để lấy giỏ hàng
 export const fetchCart = createAsyncThunk(
   "cart/fetchCart",
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return sampleCart;
+      const state = getState() as { auth: { accessToken: string | null } };
+      const accessToken = state.auth.accessToken;
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      const response = await getCartApi();
+      if (response.error || !response.data) {
+        if (
+          response.error &&
+          response.error.includes("Current user not found")
+        ) {
+          await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
+          router.replace("/login");
+        }
+        throw new Error(
+          typeof response.error === "string"
+            ? response.error
+            : Array.isArray(response.error)
+            ? response.error.join(", ")
+            : response.message || "Failed to fetch cart"
+        );
+      }
+      // Chuyển đổi selectedOptions thành options
+      const cart = response.data;
+      cart.cartItems = cart.cartItems.map((item: any) => ({
+        ...item,
+        options: Array.isArray(item.selectedOptions)
+          ? item.selectedOptions
+          : [],
+      }));
+      return cart; // ICart
     } catch (error: any) {
-      return rejectWithValue("Failed to fetch cart");
+      return rejectWithValue(error.message || "Failed to fetch cart");
     }
   }
 );
 
+// Async thunk để thêm mục vào giỏ hàng
 export const addToCart = createAsyncThunk(
   "cart/addToCart",
-  async (cartItem: ICartItem, { rejectWithValue }) => {
+  async (
+    {
+      menuItemId,
+      quantity,
+      options,
+    }: { menuItemId: number; quantity: number; options: IOptionValue[] },
+    { getState, rejectWithValue }
+  ) => {
     try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // Simulate adding to cart (update state in reducer)
-      return { ...sampleCart, cartItems: [...sampleCart.cartItems, cartItem] };
+      const state = getState() as { auth: { accessToken: string | null } };
+      const accessToken = state.auth.accessToken;
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      const response = await addItemToCartApi(menuItemId, quantity, options);
+      if (response.error || !response.data) {
+        if (
+          response.error &&
+          response.error.includes("Current user not found")
+        ) {
+          await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
+          router.replace("/login");
+        }
+        throw new Error(
+          typeof response.error === "string"
+            ? response.error
+            : Array.isArray(response.error)
+            ? response.error.join(", ")
+            : response.message || "Failed to add item to cart"
+        );
+      }
+      // Chuyển đổi selectedOptions thành options
+      const cart = response.data;
+      cart.cartItems = cart.cartItems.map((item: any) => ({
+        ...item,
+        options: Array.isArray(item.selectedOptions)
+          ? item.selectedOptions
+          : [],
+      }));
+      return cart; // ICart
     } catch (error: any) {
-      return rejectWithValue("Failed to add item to cart");
+      return rejectWithValue(error.message || "Failed to add item to cart");
     }
   }
 );
 
+// Async thunk để cập nhật số lượng
 export const updateQuantity = createAsyncThunk(
   "cart/updateQuantity",
   async (
     { cartItemId, quantity }: { cartItemId: number; quantity: number },
-    { rejectWithValue }
+    { getState, rejectWithValue }
   ) => {
     try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // Simulate updating quantity
-      const updatedItems = sampleCart.cartItems.map((item) =>
-        item.id === cartItemId
-          ? { ...item, quantity: Math.max(1, quantity) }
-          : item
-      );
-      const newTotalPrice = updatedItems.reduce(
-        (sum, item) => sum + item.priceAtAddition * item.quantity,
-        0
-      );
-      return {
-        ...sampleCart,
-        cartItems: updatedItems,
-        totalPrice: newTotalPrice,
+      const state = getState() as { auth: { accessToken: string | null } };
+      const accessToken = state.auth.accessToken;
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      const response = await updateQuantityApi(cartItemId, quantity);
+      if (response.error || !response.data) {
+        if (
+          response.error &&
+          response.error.includes("Current user not found")
+        ) {
+          await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
+          router.replace("/login");
+        }
+        throw new Error(
+          typeof response.error === "string"
+            ? response.error
+            : Array.isArray(response.error)
+            ? response.error.join(", ")
+            : response.message || "Failed to update quantity"
+        );
+      }
+      // Chuyển đổi selectedOptions thành options
+      const updatedItem = {
+        ...response.data,
+        options: Array.isArray(response.data.selectedOptions)
+          ? response.data.selectedOptions
+          : [],
       };
+      return updatedItem; // ICartItem
     } catch (error: any) {
-      return rejectWithValue("Failed to update quantity");
+      return rejectWithValue(error.message || "Failed to update quantity");
     }
   }
 );
 
+// Async thunk để xóa mục khỏi giỏ hàng
 export const removeFromCart = createAsyncThunk(
   "cart/removeFromCart",
-  async (cartItemId: number, { rejectWithValue }) => {
+  async (cartItemId: number, { getState, rejectWithValue }) => {
     try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // Simulate removing item
-      const updatedItems = sampleCart.cartItems.filter(
-        (item) => item.id !== cartItemId
-      );
-      const newTotalPrice = updatedItems.reduce(
-        (sum, item) => sum + item.priceAtAddition * item.quantity,
-        0
-      );
-      return {
-        ...sampleCart,
-        cartItems: updatedItems,
-        totalPrice: newTotalPrice,
-      };
+      const state = getState() as { auth: { accessToken: string | null } };
+      const accessToken = state.auth.accessToken;
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      const response = await removeItemFromCartApi(cartItemId);
+      if (response.error) {
+        if (
+          response.error &&
+          response.error.includes("Current user not found")
+        ) {
+          await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
+          router.replace("/login");
+        }
+        throw new Error(
+          typeof response.error === "string"
+            ? response.error
+            : Array.isArray(response.error)
+            ? response.error.join(", ")
+            : response.message || "Failed to remove item"
+        );
+      }
+      return cartItemId; // Trả về cartItemId để xóa khỏi state
     } catch (error: any) {
-      return rejectWithValue("Failed to remove item from cart");
+      return rejectWithValue(error.message || "Failed to remove item");
+    }
+  }
+);
+
+// Async thunk để tạo đơn hàng
+export const createOrder = createAsyncThunk(
+  "cart/createOrder",
+  async (
+    orderData: {
+      cartId: number;
+      shippingAddress: string;
+      note: string;
+      paymentMethod: "COD" | "VNPAY" | "MOMO" | "BANK_TRANSFER" | "CREDIT_CARD";
+      userId: number;
+      branchId: number;
+    },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const state = getState() as { auth: { accessToken: string | null } };
+      const accessToken = state.auth.accessToken;
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      const response = await createOrderApi(
+        orderData.userId,
+        orderData.branchId,
+        orderData.shippingAddress,
+        orderData.note,
+        orderData.paymentMethod
+      );
+      if (response.error || !response.data) {
+        if (
+          response.error &&
+          response.error.includes("Current user not found")
+        ) {
+          await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
+          router.replace("/login");
+        }
+        throw new Error(
+          typeof response.error === "string"
+            ? response.error
+            : Array.isArray(response.error)
+            ? response.error.join(", ")
+            : response.message || "Failed to create order"
+        );
+      }
+      return response.data; // IOrderInfo
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to create order");
     }
   }
 );
@@ -137,7 +253,6 @@ const cartSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch Cart
       .addCase(fetchCart.pending, (state) => {
         state.status = "loading";
       })
@@ -149,39 +264,64 @@ const cartSlice = createSlice({
         state.status = "failed";
         state.error = action.payload as string;
       })
-      // Add to Cart
       .addCase(addToCart.pending, (state) => {
         state.status = "loading";
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload;
+        state.cart = action.payload; // Cập nhật toàn bộ giỏ hàng
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       })
-      // Update Quantity
       .addCase(updateQuantity.pending, (state) => {
         state.status = "loading";
       })
       .addCase(updateQuantity.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload;
+        if (state.cart) {
+          state.cart.cartItems = state.cart.cartItems.map((item) =>
+            item.id === action.payload.id ? action.payload : item
+          );
+          state.cart.totalPrice = state.cart.cartItems.reduce(
+            (total, item) => total + item.priceAtAddition * item.quantity,
+            0
+          );
+        }
       })
       .addCase(updateQuantity.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       })
-      // Remove from Cart
       .addCase(removeFromCart.pending, (state) => {
         state.status = "loading";
       })
       .addCase(removeFromCart.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload;
+        if (state.cart) {
+          state.cart.cartItems = state.cart.cartItems.filter(
+            (item) => item.id !== action.payload
+          );
+          state.cart.totalPrice = state.cart.cartItems.reduce(
+            (total, item) => total + item.priceAtAddition * item.quantity,
+            0
+          );
+        }
       })
       .addCase(removeFromCart.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload as string;
+      })
+      .addCase(createOrder.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(createOrder.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.cart = null;
+        state.error = null;
+      })
+      .addCase(createOrder.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       });

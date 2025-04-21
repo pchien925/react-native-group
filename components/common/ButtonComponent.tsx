@@ -2,10 +2,10 @@ import React from "react";
 import {
   Text,
   TouchableOpacity,
+  StyleProp,
   ViewStyle,
   TextStyle,
   ActivityIndicator,
-  StyleProp,
 } from "react-native";
 import { Colors } from "@/constants/Colors";
 import { globalStyles } from "@/styles/global.styles";

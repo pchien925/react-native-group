@@ -315,4 +315,36 @@ export const globalStyles = StyleSheet.create({
     color: Colors.primary, // Màu chữ khi được chọn
     fontWeight: "600",
   },
+
+  quantityContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 16, // Bo góc nhẹ để đồng nhất với các button/card
+    backgroundColor: Colors.backgroundLight, // Màu nền nhạt
+  },
+  quantityButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16, // Hình tròn
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    marginHorizontal: 8, // Khoảng cách giữa nút và số lượng
+  },
+  quantityButtonText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.textLightPrimary,
+    lineHeight: 20,
+  },
+  quantityText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.textLightPrimary,
+    textAlign: "center",
+    minWidth: 24, // Đảm bảo không bị co lại khi số lượng là 1 chữ số
+  },
 });

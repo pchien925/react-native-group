@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ViewStyle, TextStyle } from "react-native";
+import { View, Text, StyleProp, ViewStyle, TextStyle } from "react-native";
 import { Colors } from "@/constants/Colors";
 import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -9,8 +9,8 @@ type TagType = "success" | "warning" | "error" | "info" | "default";
 interface TagProps {
   text: string;
   type?: TagType;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 const TagComponent: React.FC<TagProps> = ({

@@ -1,29 +1,44 @@
-import React, { useState, useEffect } from "react";
-import { View, FlatList, StyleSheet } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, FlatList, StyleSheet, ActivityIndicator } from "react-native";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
 import TextComponent from "@/components/common/TextComponent";
 import ButtonComponent from "@/components/common/ButtonComponent";
 import RowComponent from "@/components/common/RowComponent";
 import ToastComponent from "@/components/common/ToastComponent";
-import ModalComponent from "@/components/common/ModalComponent";
+import LoadingComponent from "@/components/common/LoadingComponent";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/global.styles";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { router } from "expo-router";
-import { sampleOrders } from "@/data/sampleOrderData";
+import { sampleOrders } from "@/data/orderSummaryData";
 import OrderItem from "@/components/order/OrderItemComponent";
+
+const ITEMS_PER_PAGE = 10;
+
+// Ánh xạ orderStatus sang tiếng Việt cho bộ lọc
+const statusFilterMap: Record<string, IOrderSummary["orderStatus"] | "Tất cả"> =
+  {
+    "Tất cả": "Tất cả",
+    "Đang giao": "SHIPPING",
+    "Đang xử lý": "PROCESSING",
+    "Đã giao": "COMPLETED",
+    "Đã hủy": "CANCELED",
+  };
 
 const OrderScreen = () => {
   const { isDarkMode } = useTheme();
   const [orders, setOrders] = useState<IOrderSummary[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<IOrderSummary[]>([]);
   const [status, setStatus] = useState<
     "idle" | "loading" | "succeeded" | "failed"
   >("idle");
   const [error, setError] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<string>("Tất cả");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -34,67 +49,137 @@ const OrderScreen = () => {
     visible: false,
   });
 
+  const delay = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+  const filterOptions = [
+    "Tất cả",
+    "Đang giao",
+    "Đang xử lý",
+    "Đã giao",
+    "Đã hủy",
+  ];
+
+  // Memoize hàm xử lý
+  const handleOrderPress = useCallback((orderId: number) => {
+    router.push(`/order/${orderId}`);
+  }, []);
+
+  const handleFilterPress = useCallback((filter: string) => {
+    setSelectedFilter(filter);
+    setPage(1); // Reset page khi đổi filter
+    setOrders([]); // Reset orders để tải lại dữ liệu
+    setHasMore(true); // Reset hasMore
+    setStatus("idle"); // Kích hoạt tải lại
+  }, []);
+
+  // Hàm tải dữ liệu
+  const loadOrders = useCallback(async (pageNum: number, isRefresh = false) => {
+    if (pageNum === 1) {
+      setStatus("loading");
+      if (isRefresh) setRefreshing(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
+    try {
+      await delay(1000); // Độ trễ giả lập
+      const start = (pageNum - 1) * ITEMS_PER_PAGE;
+      const end = start + ITEMS_PER_PAGE;
+      const newOrders = sampleOrders.slice(start, end);
+
+      if (newOrders.length === 0) {
+        setHasMore(false);
+      } else {
+        setOrders((prev) =>
+          pageNum === 1 ? newOrders : [...prev, ...newOrders]
+        );
+      }
+      setStatus("succeeded");
+    } catch (err) {
+      setError("Lỗi tải đơn hàng");
+      setStatus("failed");
+    } finally {
+      setIsLoadingMore(false);
+      if (isRefresh) setRefreshing(false);
+    }
+  }, []);
+
+  // Tải dữ liệu ban đầu hoặc khi trạng thái là idle
   useEffect(() => {
     if (status === "idle") {
-      setStatus("loading");
-      setTimeout(() => {
-        try {
-          setOrders(sampleOrders);
-          setStatus("succeeded");
-        } catch (err) {
-          setError("Lỗi tải đơn hàng");
-          setStatus("failed");
-        }
-      }, 500);
+      loadOrders(1);
     }
-  }, [status]);
+  }, [status, loadOrders]);
 
-  const handleOrderPress = (orderId: number) => {
-    router.push(`/order/${orderId}`);
-  };
-
-  const handleConfirmCancel = () => {
-    if (selectedOrderId) {
-      setOrders((prevOrders) =>
-        prevOrders.map((o) =>
-          o.id === selectedOrderId
-            ? {
-                ...o,
-                orderStatus: "Đã hủy",
-                updatedAt: new Date().toLocaleString("vi-VN"),
-              }
-            : o
-        )
+  // Lọc dữ liệu khi filter hoặc orders thay đổi
+  useEffect(() => {
+    const filterStatus = statusFilterMap[selectedFilter];
+    if (filterStatus === "Tất cả") {
+      setFilteredOrders(orders);
+    } else {
+      setFilteredOrders(
+        orders.filter((order) => order.orderStatus === filterStatus)
       );
-      setToast({
-        message: "Đơn hàng đã được hủy",
-        type: "success",
-        visible: true,
-      });
     }
-    setModalVisible(false);
-    setSelectedOrderId(null);
-  };
+  }, [selectedFilter, orders]);
 
-  const handleCloseModal = () => {
-    setModalVisible(false);
-    setSelectedOrderId(null);
+  // Xử lý khi cuộn đến cuối danh sách
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !isLoadingMore && status === "succeeded" && !refreshing) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      loadOrders(nextPage);
+    }
+  }, [hasMore, isLoadingMore, status, page, loadOrders, refreshing]);
+
+  // Xử lý Pull-to-Refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setPage(1); // Reset page
+    setHasMore(true); // Reset hasMore
+    setOrders([]); // Reset orders
+    loadOrders(1, true); // Gọi trực tiếp loadOrders với isRefresh = true
+  }, [loadOrders]);
+
+  const renderFilterButtons = () => (
+    <FlatList
+      data={filterOptions}
+      renderItem={({ item: filter }) => (
+        <ButtonComponent
+          title={filter}
+          type={selectedFilter === filter ? "primary" : "outline"}
+          onPress={() => handleFilterPress(filter)}
+          style={styles.filterButton}
+          textStyle={styles.filterButtonText}
+        />
+      )}
+      keyExtractor={(item) => item}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.filterContainer}
+      ListFooterComponent={<SpaceComponent size={16} horizontal />}
+    />
+  );
+
+  const renderFooter = () => {
+    if (!isLoadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={Colors.primary} />
+      </View>
+    );
   };
 
   return (
     <ContainerComponent style={styles.container}>
       <SpaceComponent size={16} />
-      {status === "loading" ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons
-            name="refresh-circle-outline"
-            size={60}
-            color={Colors.accent}
-          />
-          <TextComponent type="subheading" style={styles.emptyText}>
-            Đang tải đơn hàng...
-          </TextComponent>
-        </View>
+      {status === "loading" && page === 1 && !refreshing ? (
+        <LoadingComponent
+          loadingText="Đang tải đơn hàng..."
+          size="large"
+          style={styles.emptyContainer}
+          accessibilityLabel="Đang tải đơn hàng"
+        />
       ) : status === "failed" ? (
         <View style={styles.emptyContainer}>
           <Ionicons
@@ -133,52 +218,40 @@ const OrderScreen = () => {
           </RowComponent>
         </View>
       ) : (
-        <FlatList
-          data={orders}
-          renderItem={({ item }) => (
-            <OrderItem
-              order={item}
-              setOrders={setOrders}
-              setModalVisible={setModalVisible}
-              setSelectedOrderId={setSelectedOrderId}
-              onPress={handleOrderPress}
-            />
-          )}
-          keyExtractor={(item) => item.id.toString()}
-          showsVerticalScrollIndicator={false}
-          ListFooterComponent={<SpaceComponent size={16} />}
-          getItemLayout={(data, index) => ({
-            length: 150,
-            offset: 150 * index,
-            index,
-          })}
-        />
+        <>
+          {renderFilterButtons()}
+          <SpaceComponent size={16} />
+          <FlatList
+            data={filteredOrders}
+            renderItem={({ item }) => (
+              <OrderItem
+                order={item}
+                setOrders={setOrders}
+                onPress={handleOrderPress}
+              />
+            )}
+            keyExtractor={(item) => item.id.toString()}
+            showsVerticalScrollIndicator={false}
+            ListFooterComponent={renderFooter}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name="receipt-outline"
+                  size={60}
+                  color={Colors.accent}
+                />
+                <TextComponent type="subheading" style={styles.emptyText}>
+                  Không có đơn hàng trong trạng thái này
+                </TextComponent>
+              </View>
+            }
+          />
+        </>
       )}
-      <ModalComponent
-        visible={modalVisible}
-        title="Hủy đơn hàng"
-        onClose={handleCloseModal}
-        style={styles.modalContent}
-        titleStyle={styles.modalTitle}
-      >
-        <TextComponent style={styles.modalMessage}>
-          Bạn có chắc muốn hủy đơn hàng này?
-        </TextComponent>
-        <RowComponent style={styles.modalButtonContainer}>
-          <ButtonComponent
-            title="Không"
-            type="outline"
-            onPress={handleCloseModal}
-            style={styles.modalButton}
-          />
-          <ButtonComponent
-            title="Hủy"
-            type="primary"
-            onPress={handleConfirmCancel}
-            style={styles.modalButton}
-          />
-        </RowComponent>
-      </ModalComponent>
       <ToastComponent
         message={toast.message}
         type={toast.type}
@@ -208,11 +281,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 18,
     fontWeight: "600",
+    color: Colors.textLightPrimary,
   },
   emptySubText: {
     textAlign: "center",
     marginTop: 8,
     fontSize: 14,
+    color: Colors.textLightSecondary,
   },
   emptyButtonContainer: {
     marginTop: 16,
@@ -228,35 +303,31 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
   },
-  modalContent: {
-    borderRadius: 12,
-    padding: 16,
-    width: "80%",
-    maxHeight: "50%",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  modalMessage: {
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  modalButtonContainer: {
-    gap: 12,
-    justifyContent: "flex-end",
-  },
-  modalButton: {
-    width: 120,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
   toast: {
     borderRadius: 8,
     padding: 12,
     marginHorizontal: 16,
     bottom: 20,
+  },
+  filterContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  filterButton: {
+    marginRight: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    minWidth: 100,
+    maxHeight: 50,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: "center",
   },
 });
 

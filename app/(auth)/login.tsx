@@ -1,3 +1,4 @@
+// screens/LoginScreen.tsx
 import React, { useState } from "react";
 import { StyleSheet, View, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,12 +10,15 @@ import TextComponent from "@/components/common/TextComponent";
 import ToastComponent from "@/components/common/ToastComponent";
 import RowComponent from "@/components/common/RowComponent";
 import { Colors } from "@/constants/Colors";
-import ImageComponent from "@/components/common/ImageComponent";
-import { router, useRouter } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAppDispatch } from "@/store/store";
+import { login, getCurrentUser } from "@/store/slices/authSlice";
+import { router } from "expo-router";
 
 const LoginScreen: React.FC = () => {
-  const router = useRouter();
-  const [username, setUsername] = useState("");
+  const { isDarkMode } = useTheme();
+  const dispatch = useAppDispatch();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -24,20 +28,35 @@ const LoginScreen: React.FC = () => {
     visible: boolean;
   }>({ message: "", type: "success", visible: false });
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setIsLoading(true);
-    if (username && password) {
+    if (!email.trim() || !password.trim()) {
+      setToast({
+        message: "Vui lòng điền đầy đủ thông tin",
+        type: "error",
+        visible: true,
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Gọi action login
+      await dispatch(login({ email, password })).unwrap();
+      // Lấy thông tin người dùng
+      await dispatch(getCurrentUser()).unwrap();
       setToast({
         message: "Đăng nhập thành công!",
         type: "success",
         visible: true,
       });
       setTimeout(() => {
-        router.replace("home");
-      });
-    } else {
+        router.replace("/(tabs)/home");
+        setIsLoading(false);
+      }, 2000);
+    } catch (err: any) {
       setToast({
-        message: "Vui lòng điền đầy đủ thông tin",
+        message: `Đăng nhập thất bại: ${err || "Lỗi không xác định"}`,
         type: "error",
         visible: true,
       });
@@ -68,8 +87,8 @@ const LoginScreen: React.FC = () => {
           </TextComponent>
           <InputComponent
             placeholder="Email"
-            value={username}
-            onChangeText={setUsername}
+            value={email}
+            onChangeText={setEmail}
             style={styles.input}
             accessibilityLabel="Email"
           />
@@ -94,11 +113,14 @@ const LoginScreen: React.FC = () => {
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeIcon}
+              accessibilityLabel={
+                showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"
+              }
             >
               <Ionicons
                 name={showPassword ? "eye" : "eye-off"}
                 size={24}
-                color={showPassword ? Colors.iconActive : Colors.iconInactive}
+                color={isDarkMode ? Colors.iconActive : Colors.iconInactive}
               />
             </TouchableOpacity>
           </View>
@@ -114,6 +136,7 @@ const LoginScreen: React.FC = () => {
           style={styles.button}
           textStyle={styles.buttonText}
           loading={isLoading}
+          disabled={isLoading}
           accessibilityLabel="Nút đăng nhập"
         />
 
@@ -126,14 +149,16 @@ const LoginScreen: React.FC = () => {
             title="Quên mật khẩu"
             style={{ paddingHorizontal: 4 }}
             textStyle={styles.link}
-            onPress={() => router.replace("forgot-password")}
+            onPress={() => router.push("/forgot-password")}
+            accessibilityLabel="Quên mật khẩu"
           />
           <ButtonComponent
             type="text"
             title="Tạo tài khoản"
             style={{ paddingHorizontal: 4 }}
             textStyle={styles.link}
-            onPress={() => router.replace("register")}
+            onPress={() => router.push("/register")}
+            accessibilityLabel="Tạo tài khoản"
           />
         </RowComponent>
 
@@ -146,10 +171,10 @@ const LoginScreen: React.FC = () => {
       </View>
 
       {/* Văn bản dưới cùng */}
-      <TextComponent style={styles.footerText}>
+      <TextComponent style={styles.termsText}>
         Phiên bản tồn đọng v0.19e.
       </TextComponent>
-      <TextComponent style={styles.footerText}>
+      <TextComponent style={styles.termsText}>
         Độ nhiệt độ và thời gian cần sử dụng.
       </TextComponent>
 
@@ -171,12 +196,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     justifyContent: "center",
     alignItems: "center",
-  },
-  logo: {
-    width: 60,
-    height: 40,
-    marginTop: 48,
-    backgroundColor: "#000000",
   },
   heading: {
     fontSize: 28,
@@ -245,12 +264,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textLightSecondary,
     textAlign: "center",
-  },
-  footerText: {
-    fontSize: 10,
-    color: Colors.textLightSecondary,
-    textAlign: "center",
-    marginTop: 8,
   },
 });
 

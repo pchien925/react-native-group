@@ -1,5 +1,12 @@
 import React, { useEffect } from "react";
-import { View, Text, ViewStyle, TextStyle, Animated } from "react-native";
+import {
+  View,
+  Text,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+  Animated,
+} from "react-native";
 import { Colors } from "@/constants/Colors";
 import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -12,8 +19,8 @@ interface ToastProps {
   visible: boolean;
   onHide: () => void;
   duration?: number;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 const ToastComponent: React.FC<ToastProps> = ({

@@ -3,6 +3,7 @@ import {
   Modal,
   View,
   Text,
+  StyleProp,
   ViewStyle,
   TextStyle,
   ScrollView,
@@ -17,8 +18,8 @@ interface ModalProps {
   title?: string;
   children?: React.ReactNode;
   onClose: () => void;
-  style?: ViewStyle;
-  titleStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  titleStyle?: StyleProp<TextStyle>;
 }
 
 const ModalComponent: React.FC<ModalProps> = ({

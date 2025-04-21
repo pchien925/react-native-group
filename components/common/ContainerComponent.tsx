@@ -2,8 +2,8 @@ import React from "react";
 import {
   View,
   ScrollView,
+  StyleProp,
   ViewStyle,
-  TextStyle,
   KeyboardAvoidingView,
 } from "react-native";
 import { Colors } from "@/constants/Colors";
@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 interface ContainerProps {
   children: React.ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   padding?: number;
   scrollable?: boolean;
 }

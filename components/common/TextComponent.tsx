@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Text as RNText,
+  StyleProp,
   TextStyle,
   TextProps as RNTextProps,
 } from "react-native";
@@ -13,7 +14,7 @@ type TextType = "heading" | "subheading" | "body" | "caption";
 interface TextProps extends RNTextProps {
   children: React.ReactNode;
   type?: TextType;
-  style?: TextStyle | TextStyle[];
+  style?: StyleProp<TextStyle>;
   accessible?: boolean;
   accessibilityLabel?: string;
 }

@@ -1,14 +1,9 @@
 import React from "react";
-import {
-  FlatList,
-  View,
-  ActivityIndicator,
-  RefreshControl,
-  StyleSheet,
-} from "react-native";
+import { FlatList, View, StyleSheet, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import MenuItemComponent from "@/components/MenuItem/MenuItemComponent";
 import TextComponent from "@/components/common/TextComponent";
+import LoadingComponent from "@/components/common/LoadingComponent"; // Import LoadingComponent
 import { Colors } from "@/constants/Colors";
 import { ScreenDimensions } from "@/constants/Dimensions";
 
@@ -60,15 +55,30 @@ const MenuItemList: React.FC<MenuItemListProps> = ({
       onEndReachedThreshold={0.5}
       ListFooterComponent={
         loading && !refreshing ? (
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <LoadingComponent
+            loadingText="Đang tải thêm món ăn..."
+            size="small"
+            style={styles.loadingMoreContainer}
+            accessibilityLabel="Đang tải thêm món ăn"
+          />
         ) : null
       }
       ListEmptyComponent={
-        !loading && !refreshing ? (
+        loading || refreshing ? (
+          <LoadingComponent
+            loadingText={refreshing ? "Đang làm mới..." : "Đang tải món ăn..."}
+            style={styles.loadingContainer}
+            accessibilityLabel={
+              refreshing
+                ? "Đang làm mới danh sách"
+                : "Đang tải danh sách món ăn"
+            }
+          />
+        ) : (
           <TextComponent style={styles.emptyText}>
             Không có món ăn nào trong danh mục này.
           </TextComponent>
-        ) : null
+        )
       }
       refreshControl={
         <RefreshControl
@@ -90,6 +100,18 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 300,
+  },
+  loadingMoreContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
   },
 });
 

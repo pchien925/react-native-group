@@ -1,11 +1,11 @@
 import React from "react";
-import { View, ViewStyle } from "react-native";
+import { View, StyleProp, ViewStyle } from "react-native";
 import { globalStyles } from "@/styles/global.styles";
 
 interface SpaceProps {
   size?: number;
   horizontal?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 const SpaceComponent: React.FC<SpaceProps> = ({

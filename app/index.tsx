@@ -9,7 +9,7 @@ const index = () => {
   return (
     <View style={{ flex: 1 }}>
       <ButtonComponent
-        onPress={() => router.push("/home")}
+        onPress={() => router.push("/login")}
         title="Click Me"
       ></ButtonComponent>
     </View>

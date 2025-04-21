@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ViewStyle, TextStyle } from "react-native";
+import { View, StyleProp, ViewStyle, TextStyle } from "react-native";
 import TextComponent from "./TextComponent";
 import { Colors } from "@/constants/Colors";
 import { globalStyles } from "@/styles/global.styles";
@@ -16,8 +16,8 @@ type BadgeType =
 interface BadgeProps {
   text: string;
   type?: BadgeType;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 const BadgeComponent: React.FC<BadgeProps> = ({
