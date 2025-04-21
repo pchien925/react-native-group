@@ -142,16 +142,24 @@ export const getUserOrdersApi = (
   page: number,
   size: number,
   sort: string = "id",
-  direction: string = "asc"
+  direction: string = "desc"
 ): Promise<IBackendResponse<IPaginationData<IOrderSummary>>> => {
-  const url = `/api/v1/users/${userId}/orders?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
+  const url = `/api/v1/orders?userId=${userId}&page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
   return axios.get(url);
 };
 
 export const getOrderByIdApi = (
   orderId: number,
   userId: number
-): Promise<IBackendResponse<IOrderInfo>> => {
+): Promise<IBackendResponse<IOrderDetail>> => {
   const url = `/api/v1/orders/${orderId}?userId=${userId}`;
   return axios.get(url);
+};
+
+export const cancelOrderApi = (
+  orderId: number,
+  userId: number
+): Promise<IBackendResponse<IOrderInfo>> => {
+  const url = `/api/v1/orders/${orderId}/cancel?userId=${userId}`;
+  return axios.patch(url);
 };

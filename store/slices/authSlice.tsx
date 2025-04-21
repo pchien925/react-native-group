@@ -75,7 +75,12 @@ export const getCurrentUser = createAsyncThunk(
         throw new Error("No access token available");
       }
       const response = await getCurrentUserApi();
-      return await handleApiError(response, "Failed to fetch user"); // IUser
+      const data = await handleApiError(response, "Failed to fetch user");
+      if (!data) {
+        throw new Error("Current user not found");
+      }
+      await AsyncStorage.setItem("user", JSON.stringify(data));
+      return data; // IUser
     } catch (error: any) {
       console.error("Get current user error:", error.message);
       return rejectWithValue(error.message);
