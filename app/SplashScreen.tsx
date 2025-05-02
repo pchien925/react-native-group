@@ -41,7 +41,7 @@ const SplashScreen = () => {
         } else if (isAuthenticated !== "true") {
           router.replace("/login");
         } else {
-          router.replace("(tabs)");
+          router.replace("/(tabs)/home");
         }
       } catch (error) {
         router.replace("/onboarding");
@@ -63,9 +63,7 @@ const SplashScreen = () => {
         ]}
       >
         <ImageComponent
-          source={{
-            uri: "https://img.dominos.vn/cach-nuong-pizza-chuan-0.jpg",
-          }}
+          source={require("@/assets/images/pizza-logo.png")}
           style={styles.logo}
           accessibilityLabel="Logo Pizza App"
         />
@@ -82,7 +80,7 @@ const SplashScreen = () => {
           ]}
           accessibilityLabel="Tên ứng dụng Pizza App"
         >
-          Pizza App
+          Pizza Delivery App
         </TextComponent>
       </Animated.View>
     </ContainerComponent>
@@ -99,8 +97,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 250,
+    height: 250,
     marginBottom: 20,
   },
   text: {

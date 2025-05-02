@@ -1,17 +1,28 @@
-// screens/MenuScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, FlatList, View, RefreshControl, Text } from "react-native";
+import { router } from "expo-router";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
-import CategorySection from "@/components/menu/CategorySection";
-import MenuItemsSection from "@/components/menu/MenuItemsSection";
-import ModalSection from "@/components/menu/ModalSection";
-import ToastSection from "@/components/menu/ToastSection";
-import { getMenuCategoriesApi, getOptionsByMenuItemApi } from "@/services/api";
-import { router } from "expo-router";
+import MenuCategoryComponent from "@/components/MenuCategory/MenuCategoryComponent";
+import MenuItemComponent from "@/components/MenuItem/MenuItemComponent";
+import ItemCustomizationModal from "@/components/menu/ItemCustomizationModal";
+import LoadingComponent from "@/components/common/LoadingComponent";
+import {
+  getMenuCategoriesApi,
+  getMenuItemsApi,
+  getMenuItemsByCategoryApi,
+  getOptionsByMenuItemApi,
+} from "@/services/api";
+import { Colors } from "@/constants/Colors";
+import { ScreenDimensions } from "@/constants/Dimensions";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAppDispatch } from "@/store/store";
+import { addToCart } from "@/store/slices/cartSlice";
+import Toast from "react-native-toast-message";
 
 const MenuScreen = () => {
   console.log("MenuScreen rendered");
+
   const [categories, setCategories] = useState<IMenuCategory[]>([]);
   const [selectedCategory, setSelectedCategory] =
     useState<IMenuCategory | null>(null);
@@ -28,45 +39,126 @@ const MenuScreen = () => {
   const [quantity, setQuantity] = useState(1);
   const [options, setOptions] = useState<IOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  // Lấy danh mục từ API
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await getMenuCategoriesApi();
-        if (response.error || !response.data) {
-          if (response.error?.includes("Current user not found")) {
-            router.replace("/login");
-          }
-          throw new Error(response.message || "Failed to fetch categories");
+  const { isDarkMode } = useTheme();
+  const dispatch = useAppDispatch();
+
+  const fetchCategories = async () => {
+    console.log("Fetching categories...");
+    try {
+      const response = await getMenuCategoriesApi();
+      if (response.error || !response.data) {
+        if (response.error?.includes("Current user not found")) {
+          router.replace("/login");
         }
-        if (response.data.length > 0) {
-          setCategories(response.data);
-          setSelectedCategory(response.data[0]);
-        } else {
-          setToastMessage("Không có danh mục nào khả dụng");
-          setToastType("error");
-          setToastVisible(true);
-        }
-      } catch (error: any) {
-        setToastMessage(error.message || "Không thể tải danh mục");
-        setToastType("error");
-        setToastVisible(true);
+        throw new Error(response.message || "Failed to fetch categories");
       }
-    };
+      if (response.data.length > 0) {
+        setCategories(response.data);
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Không có danh mục nào khả dụng",
+          visibilityTime: 1200,
+        });
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: error.message || "Không thể tải danh mục",
+        visibilityTime: 1200,
+      });
+    }
+  };
+
+  const fetchAllMenuItems = async (pageNum: number) => {
+    setLoading(true);
+    try {
+      const pageSize = 10;
+      const response = await getMenuItemsApi(pageNum, pageSize, "id", "asc");
+      if (response.error || !response.data) {
+        if (response.error?.includes("Current user not found")) {
+          router.replace("/login");
+        }
+        throw new Error(response.message || "Failed to fetch menu items");
+      }
+      setTotalPages(response.data.totalPages);
+      return response.data;
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: error.message || "Không thể tải món ăn",
+        visibilityTime: 1200,
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMenuItemsByCategory = async (
+    pageNum: number,
+    categoryId: number
+  ) => {
+    setLoading(true);
+    try {
+      const pageSize = 10;
+      const response = await getMenuItemsByCategoryApi(
+        categoryId,
+        pageNum,
+        pageSize,
+        "id",
+        "asc"
+      );
+      if (response.error || !response.data) {
+        if (response.error?.includes("Current user not found")) {
+          router.replace("/login");
+        }
+        throw new Error(response.message || "Failed to fetch menu items");
+      }
+      setTotalPages(response.data.totalPages);
+      return response.data;
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: error.message || "Không thể tải món ăn",
+        visibilityTime: 1200,
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchCategories();
   }, []);
 
-  const handleCategoryPress = useCallback((category: IMenuCategory) => {
+  useEffect(() => {
+    console.log("Selected category changed:", selectedCategory);
+    console.log("Page changed:", page);
+    if (!selectedCategory) {
+      fetchAllMenuItems(page).then((response) => {
+        setMenuItems((prev) =>
+          page === 1 ? response.content : [...prev, ...response.content]
+        );
+      });
+    } else {
+      fetchMenuItemsByCategory(page, selectedCategory.id).then((response) => {
+        setMenuItems((prev) =>
+          page === 1 ? response.content : [...prev, ...response.content]
+        );
+      });
+    }
+  }, [page, selectedCategory]);
+
+  const handleCategoryPress = (category: IMenuCategory) => {
     setSelectedCategory(category);
     setMenuItems([]);
     setPage(1);
-  }, []);
+  };
 
-  const handleAddToCart = useCallback(async (item: IMenuItem) => {
+  const handleAddToCart = async (item: IMenuItem) => {
     setSelectedItem(item);
     setSelectedOptions({});
     setQuantity(1);
@@ -80,77 +172,173 @@ const MenuScreen = () => {
         (option) =>
           option.menuItemOption && Array.isArray(option.menuItemOption)
       );
-      console.log("Options from API:", response.data); // Debug
+      console.log("Options from API:", response.data);
       setOptions(validOptions);
       setModalVisible(true);
     } catch (error: any) {
       console.error("Error fetching options:", error);
-      setToastMessage(error.message || "Không thể tải tùy chọn món ăn");
-      setToastType("error");
-      setToastVisible(true);
+      Toast.show({
+        type: "error",
+        text1: error.message || "Không thể tải tùy chọn món ăn",
+        visibilityTime: 1200,
+      });
     } finally {
       setOptionsLoading(false);
     }
-  }, []);
+  };
 
-  const handleModalClose = useCallback(() => {
+  const handleLoadMore = () => {
+    if (!loading && page < totalPages && !refreshing && menuItems.length > 0) {
+      console.log("Loading more, current page:", page);
+      setPage((prev) => prev + 1);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setMenuItems([]);
+    setPage(1);
+    if (selectedCategory) {
+      fetchMenuItemsByCategory(1, selectedCategory.id).then((response) => {
+        setMenuItems(response.content);
+        setTotalPages(response.totalPages);
+        setRefreshing(false);
+      });
+    } else {
+      setRefreshing(false);
+    }
+  };
+
+  const handleModalClose = () => {
     setModalVisible(false);
     setSelectedItem(null);
     setSelectedOptions({});
     setQuantity(1);
     setOptions([]);
-  }, []);
+  };
 
-  const handleToastHide = useCallback(() => {
-    setToastVisible(false);
-    setToastMessage("");
-    setToastType("success");
-  }, []);
+  const handleConfirmAdd = useCallback(() => {
+    if (selectedItem) {
+      if (Object.keys(selectedOptions).length === 0 && options.length > 0) {
+        Toast.show({
+          type: "error",
+          text1: "Vui lòng chọn ít nhất một tùy chọn.",
+          visibilityTime: 1200,
+        });
+        return;
+      }
+      dispatch(
+        addToCart({
+          menuItemId: selectedItem.id,
+          quantity,
+          options: Object.values(selectedOptions),
+        })
+      ).then((action) => {
+        if (addToCart.fulfilled.match(action)) {
+          Toast.show({
+            type: "success",
+            text1: `${selectedItem.name} đã được thêm vào giỏ hàng!`,
+            visibilityTime: 1200,
+          });
+        } else {
+          Toast.show({
+            type: "error",
+            text1: (action.payload as string) || "Không thể thêm vào giỏ hàng",
+            visibilityTime: 1200,
+          });
+        }
+      });
+      handleModalClose();
+    }
+  }, [dispatch, selectedItem, selectedOptions, options, quantity]);
+
+  const width = ScreenDimensions.WIDTH;
+  const numColumns = width > 600 ? 3 : 2;
 
   return (
     <ContainerComponent>
-      <CategorySection
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onCategoryPress={handleCategoryPress}
+      {/* Category List */}
+      <FlatList
+        data={categories}
+        renderItem={({ item }) => (
+          <View style={{ flex: 1 }}>
+            <MenuCategoryComponent
+              category={item}
+              onPress={() => handleCategoryPress(item)}
+              isSelected={item.id === selectedCategory?.id}
+            />
+          </View>
+        )}
+        keyExtractor={(item) => item.id.toString()}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingVertical: 16, marginBottom: 8 }}
       />
       <SpaceComponent size={16} />
-      <MenuItemsSection
-        menuItems={menuItems}
-        setMenuItems={setMenuItems}
-        loading={loading}
-        setLoading={setLoading}
-        refreshing={refreshing}
-        setRefreshing={setRefreshing}
-        page={page}
-        setPage={setPage}
-        totalPages={totalPages}
-        setTotalPages={setTotalPages}
-        selectedCategory={selectedCategory}
-        onAddToCart={handleAddToCart}
-        setToastMessage={setToastMessage}
-        setToastType={setToastType}
-        setToastVisible={setToastVisible}
-      />
-      <ModalSection
+      {/* Menu Items List */}
+      {loading && !menuItems.length && !refreshing ? (
+        <LoadingComponent
+          loadingText="Đang tải món ăn..."
+          style={styles.loadingContainer}
+          accessibilityLabel="Đang tải danh sách món ăn"
+        />
+      ) : (
+        <FlatList
+          data={menuItems}
+          renderItem={({ item }) => (
+            <View style={styles.itemContainer}>
+              <MenuItemComponent
+                menuItem={item}
+                onPress={() => router.push(`/menu-item/${item.id}`)}
+                onAddToCart={() => handleAddToCart(item)}
+              />
+            </View>
+          )}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          showsVerticalScrollIndicator={false}
+          numColumns={numColumns}
+          key={`grid-${numColumns}`}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loading && !refreshing ? (
+              <LoadingComponent
+                loadingText="Đang tải thêm món ăn..."
+                size="small"
+                style={styles.loadingMoreContainer}
+                accessibilityLabel="Đang tải thêm món ăn"
+              />
+            ) : null
+          }
+          ListEmptyComponent={
+            menuItems.length === 0 && !loading && !refreshing ? (
+              <Text style={styles.emptyText}>
+                Không có món ăn nào trong danh mục này.
+              </Text>
+            ) : null
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.primary}
+            />
+          }
+        />
+      )}
+      <ItemCustomizationModal
         visible={modalVisible}
         item={selectedItem}
         options={options}
-        optionsLoading={optionsLoading}
+        categoryId={null}
+        onClose={handleModalClose}
         selectedOptions={selectedOptions}
         setSelectedOptions={setSelectedOptions}
         quantity={quantity}
         setQuantity={setQuantity}
-        onClose={handleModalClose}
-        setToastMessage={setToastMessage}
-        setToastType={setToastType}
-        setToastVisible={setToastVisible}
-      />
-      <ToastSection
-        visible={toastVisible}
-        message={toastMessage}
-        type={toastType}
-        onHide={handleToastHide}
+        onConfirm={handleConfirmAdd}
+        isDarkMode={isDarkMode}
+        loading={optionsLoading}
       />
     </ContainerComponent>
   );
@@ -162,6 +350,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     minHeight: 300,
+  },
+  itemContainer: {
+    flex: 1,
+    padding: 8,
+    margin: 6,
+  },
+  emptyText: {
+    textAlign: "center",
+    padding: 20,
+  },
+  loadingMoreContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
   },
 });
 

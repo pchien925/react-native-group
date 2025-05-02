@@ -31,7 +31,7 @@ const VerifyEmailScreen: React.FC = () => {
           visible: true,
         });
         setTimeout(() => {
-          router.replace("reset-password");
+          router.replace("/(auth)/reset-password");
           otpRef.current?.clear();
         }, 2000);
       } else {
@@ -107,7 +107,7 @@ const VerifyEmailScreen: React.FC = () => {
             title="Quay lại Đăng Nhập"
             style={{ paddingHorizontal: 4 }}
             textStyle={styles.link}
-            onPress={() => router.replace("login")}
+            onPress={() => router.replace("/(auth)/login")}
           />
         </RowComponent>
 

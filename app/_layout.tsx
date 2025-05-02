@@ -1,8 +1,9 @@
 import { Stack } from "expo-router";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { CartProvider } from "@/contexts/CartContext";
 import { Provider } from "react-redux";
 import { store } from "@/store/store";
+import Toast from "react-native-toast-message";
+import CustomToast from "@/components/common/CustomToast";
 
 const RootLayout = () => {
   return (
@@ -35,7 +36,15 @@ const RootLayout = () => {
               headerTitle: "Chi tiết đơn hàng",
             }}
           />
+          <Stack.Screen
+            name="profile/detail"
+            options={{
+              headerShown: true,
+              headerTitle: "Thông tin cá nhân",
+            }}
+          />
         </Stack>
+        <Toast config={CustomToast} />
       </ThemeProvider>
     </Provider>
   );

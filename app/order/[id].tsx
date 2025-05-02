@@ -1,7 +1,15 @@
-// screens/OrderDetailScreen.tsx
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { ScrollView, StyleSheet, Linking, Alert, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Linking,
+  Alert,
+  View,
+  Animated,
+  Pressable,
+} from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
+import * as Haptics from "expo-haptics";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
 import TextComponent from "@/components/common/TextComponent";
@@ -10,14 +18,14 @@ import CardComponent from "@/components/common/CardComponent";
 import RowComponent from "@/components/common/RowComponent";
 import TagComponent from "@/components/common/TagComponent";
 import ImageComponent from "@/components/common/ImageComponent";
-import ToastComponent from "@/components/common/ToastComponent";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getOrderByIdApi, cancelOrderApi } from "@/services/api";
+import Toast from "react-native-toast-message"; // Import Toast
 
-const OrderDetailScreen = () => {
+const OrderDetailScreen: React.FC = () => {
   const { isDarkMode } = useTheme();
   const { id, userId } = useLocalSearchParams();
   const [orderDetail, setOrderDetail] = useState<IOrderDetail | null>(null);
@@ -25,67 +33,80 @@ const OrderDetailScreen = () => {
     "idle" | "loading" | "succeeded" | "failed"
   >("idle");
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-    visible: boolean;
-  }>({
-    message: "",
-    type: "success",
-    visible: false,
-  });
+  const fadeAnim = useState(new Animated.Value(0))[0]; // Animation for card components
 
-  // Lấy chi tiết đơn hàng từ API
+  // Fetch order details
+  const fetchOrder = useCallback(async () => {
+    if (!id || !userId) return;
+    setStatus("loading");
+    try {
+      const response: IBackendResponse<IOrderDetail> = await getOrderByIdApi(
+        Number(id),
+        Number(userId)
+      );
+      if (response.error || !response.data) {
+        throw new Error(response.message || "Không thể tải chi tiết đơn hàng");
+      }
+      setOrderDetail(response.data);
+      setStatus("succeeded");
+      // Animate cards on load
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    } catch (err: any) {
+      setError(err.message || "Lỗi tải chi tiết đơn hàng");
+      setStatus("failed");
+      Toast.show({
+        type: "error",
+        text1: err.message || "Lỗi tải chi tiết đơn hàng",
+        visibilityTime: 3000,
+      });
+    }
+  }, [id, userId, fadeAnim]);
+
   useEffect(() => {
     if (status === "idle" && id && userId) {
-      setStatus("loading");
-      const fetchOrder = async () => {
-        try {
-          const response = await getOrderByIdApi(Number(id), Number(userId));
-          console.log("Order response:", response);
-          if (response.error || !response.data) {
-            throw new Error(response.message || "Failed to fetch order");
-          }
-          setOrderDetail(response.data);
-          setStatus("succeeded");
-        } catch (error: any) {
-          setError(error.message || "Lỗi tải chi tiết đơn hàng");
-          setStatus("failed");
-          setToast({
-            message: error.message || "Lỗi tải chi tiết đơn hàng",
-            type: "error",
-            visible: true,
-          });
-        }
-      };
       fetchOrder();
     }
-  }, [status, id, userId]);
+  }, [status, id, userId, fetchOrder]);
 
-  // Xử lý hủy đơn hàng
+  // Handle order cancellation
   const handleCancelOrder = useCallback(async () => {
-    if (!id || !userId || !orderDetail) return;
+    if (!id || !userId) return;
     try {
       const response = await cancelOrderApi(Number(id), Number(userId));
       if (response.error || !response.data) {
-        throw new Error(response.message || "Failed to cancel order");
+        throw new Error(response.message || "Không thể hủy đơn hàng");
       }
-      setOrderDetail(response.data);
-      setToast({
-        message: "Đơn hàng đã được hủy thành công!",
+      const updatedOrderResponse = await getOrderByIdApi(
+        Number(id),
+        Number(userId)
+      );
+      if (updatedOrderResponse.error || !updatedOrderResponse.data) {
+        throw new Error(
+          updatedOrderResponse.message || "Không thể cập nhật đơn hàng"
+        );
+      }
+      setOrderDetail(updatedOrderResponse.data);
+      Toast.show({
         type: "success",
-        visible: true,
+        text1: "Đơn hàng đã được hủy thành công!",
+        visibilityTime: 3000,
       });
-    } catch (error: any) {
-      setToast({
-        message: error.message || "Không thể hủy đơn hàng",
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Toast.show({
         type: "error",
-        visible: true,
+        text1: err.message || "Không thể hủy đơn hàng",
+        visibilityTime: 3000,
       });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  }, [id, userId, orderDetail]);
+  }, [id, userId]);
 
-  // Modal xác nhận hủy đơn
+  // Confirm cancellation
   const confirmCancelOrder = useCallback(() => {
     Alert.alert(
       "Xác nhận hủy đơn",
@@ -96,10 +117,14 @@ const OrderDetailScreen = () => {
       ],
       { cancelable: true }
     );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [handleCancelOrder]);
 
+  // Map status to tag type
   const getStatusTagType = useCallback(
-    (status: string): "success" | "warning" | "error" | "info" => {
+    (
+      status: IOrderDetail["orderStatus"]
+    ): "success" | "warning" | "error" | "info" => {
       switch (status) {
         case "COMPLETED":
           return "success";
@@ -115,66 +140,82 @@ const OrderDetailScreen = () => {
     []
   );
 
+  // Render order item
   const renderOrderItem = useCallback(
     (item: IOrderItem, index: number) => (
-      <CardComponent
+      <Animated.View
         key={item.id}
-        style={[
-          styles.orderItemCard,
-          {
-            backgroundColor: isDarkMode ? Colors.crust : Colors.garlicCream,
-            borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
-          },
-        ]}
+        style={{
+          opacity: fadeAnim,
+          transform: [
+            {
+              translateY: fadeAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
+        }}
       >
-        <RowComponent alignItems="flex-start">
-          <ImageComponent
-            source={{ uri: item.item.imageUrl }}
-            style={styles.itemImage}
-          />
-          <View style={styles.itemDetails}>
-            <TextComponent
-              type="subheading"
-              style={[
-                styles.itemName,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-              ]}
-            >
-              {index + 1}. {item.item.name} x {item.quantity}
-            </TextComponent>
-            <TextComponent
-              type="caption"
-              style={[
-                styles.itemDescription,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkSecondary
-                    : Colors.textLightSecondary,
-                },
-              ]}
-            >
-              {item.item.description}
-            </TextComponent>
-            <TextComponent
-              type="caption"
-              style={[
-                styles.optionText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkSecondary
-                    : Colors.textLightSecondary,
-                },
-              ]}
-            >
-              Giá cơ bản: {item.item.basePrice.toLocaleString("vi-VN")} VNĐ
-            </TextComponent>
-            {item.options.map((option) => (
+        <CardComponent
+          style={[
+            styles.orderItemCard,
+            {
+              backgroundColor: isDarkMode ? Colors.crust : Colors.garlicCream,
+              borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
+            },
+          ]}
+        >
+          <RowComponent alignItems="flex-start">
+            {item.menuItem?.imageUrl ? (
+              <ImageComponent
+                source={{ uri: item.menuItem.imageUrl }}
+                style={styles.itemImage}
+              />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <Ionicons
+                  name="image-outline"
+                  size={40}
+                  color={
+                    isDarkMode
+                      ? Colors.textDarkSecondary
+                      : Colors.textLightSecondary
+                  }
+                />
+              </View>
+            )}
+            <View style={styles.itemDetails}>
               <TextComponent
-                key={option.id}
+                type="subheading"
+                style={[
+                  styles.itemName,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                {index + 1}. {item.menuItem?.name || "Không xác định"} x{" "}
+                {item.quantity}
+              </TextComponent>
+              {item.menuItem?.description && (
+                <TextComponent
+                  type="caption"
+                  style={[
+                    styles.itemDescription,
+                    {
+                      color: isDarkMode
+                        ? Colors.textDarkSecondary
+                        : Colors.textLightSecondary,
+                    },
+                  ]}
+                >
+                  {item.menuItem.description}
+                </TextComponent>
+              )}
+              <TextComponent
                 type="caption"
                 style={[
                   styles.optionText,
@@ -185,41 +226,58 @@ const OrderDetailScreen = () => {
                   },
                 ]}
               >
-                - {option.optionName}: {option.optionValue} (+
-                {option.additionalPrice.toLocaleString("vi-VN")} VNĐ)
+                Giá cơ bản:{" "}
+                {(item.menuItem?.basePrice || 0).toLocaleString("vi-VN")} VNĐ
               </TextComponent>
-            ))}
-            <TextComponent
-              type="subheading"
-              style={[
-                styles.itemTotal,
-                { color: isDarkMode ? Colors.accent : Colors.pepperoni },
-              ]}
-            >
-              Tổng: {item.totalPrice.toLocaleString("vi-VN")} VNĐ
-            </TextComponent>
-          </View>
-        </RowComponent>
-      </CardComponent>
+              {item.options?.map((option) => (
+                <TextComponent
+                  key={option.id}
+                  type="caption"
+                  style={[
+                    styles.optionText,
+                    {
+                      color: isDarkMode
+                        ? Colors.textDarkSecondary
+                        : Colors.textLightSecondary,
+                    },
+                  ]}
+                >
+                  - {option.optionName}: {option.optionValue} (+
+                  {option.additionalPrice.toLocaleString("vi-VN")} VNĐ)
+                </TextComponent>
+              ))}
+              <TextComponent
+                type="subheading"
+                style={[
+                  styles.itemTotal,
+                  { color: isDarkMode ? Colors.accent : Colors.pepperoni },
+                ]}
+              >
+                Tổng: {item.totalPrice.toLocaleString("vi-VN")} VNĐ
+              </TextComponent>
+            </View>
+          </RowComponent>
+        </CardComponent>
+      </Animated.View>
     ),
-    [isDarkMode]
+    [isDarkMode, fadeAnim]
   );
 
-  const handleToastHide = useCallback(() => {
-    setToast({ ...toast, visible: false });
-  }, [toast]);
-
+  // Loading state
   if (status === "loading") {
     return (
       <ContainerComponent style={styles.container}>
         <LoadingComponent
           loadingText="Đang tải chi tiết đơn hàng..."
+          size="large"
           style={styles.loadingContainer}
+          accessibilityLabel="Đang tải chi tiết đơn hàng"
         />
       </ContainerComponent>
     );
   }
 
+  // Error or no order state
   if (status === "failed" || !orderDetail) {
     return (
       <ContainerComponent style={styles.container}>
@@ -240,21 +298,24 @@ const OrderDetailScreen = () => {
           }}
         />
         <ButtonComponent
-          title="Quay lại"
+          title="Thử lại"
           type="primary"
+          onPress={() => setStatus("idle")}
+          style={styles.actionButton}
+          accessibilityLabel="Thử lại tải đơn hàng"
+        />
+        <ButtonComponent
+          title="Quay lại"
+          type="outline"
           onPress={() => router.back()}
-          style={[
-            styles.backButton,
-            {
-              backgroundColor: isDarkMode ? Colors.primary : Colors.accent,
-            },
-          ]}
-          textStyle={styles.backButtonText}
+          style={styles.actionButton}
+          accessibilityLabel="Quay lại danh sách đơn hàng"
         />
       </ContainerComponent>
     );
   }
 
+  // Main render
   return (
     <ContainerComponent
       style={[
@@ -265,236 +326,270 @@ const OrderDetailScreen = () => {
             : Colors.backgroundLight,
         },
       ]}
-      scrollable
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Header */}
-        <CardComponent
-          title={`Đơn hàng: ${orderDetail.orderCode}`}
-          style={[
-            styles.headerCard,
-            {
-              backgroundColor: isDarkMode ? Colors.crust : Colors.basil,
-              borderColor: isDarkMode ? Colors.borderDark : Colors.olive,
-            },
-          ]}
-          titleStyle={[
-            styles.headerTitle,
-            { color: isDarkMode ? Colors.textDarkPrimary : Colors.white },
-          ]}
-        >
-          <RowComponent justifyContent="space-between">
-            <TextComponent
-              type="caption"
-              style={[
-                styles.headerText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkSecondary
-                    : Colors.buttonTextPrimary,
-                },
-              ]}
-            >
-              Ngày đặt: {orderDetail.createdAt}
-            </TextComponent>
-            <TagComponent
-              text={
-                orderDetail.orderStatus === "COMPLETED"
-                  ? "Đã giao"
-                  : orderDetail.orderStatus === "SHIPPING"
-                  ? "Đang giao"
-                  : orderDetail.orderStatus === "PROCESSING"
-                  ? "Đang xử lý"
-                  : "Đã hủy"
-              }
-              type={getStatusTagType(orderDetail.orderStatus)}
-            />
-          </RowComponent>
-        </CardComponent>
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <CardComponent
+            title={`Đơn hàng: ${orderDetail.orderCode}`}
+            style={[
+              styles.headerCard,
+              {
+                backgroundColor: isDarkMode ? Colors.crust : Colors.basil,
+                borderColor: isDarkMode ? Colors.borderDark : Colors.olive,
+              },
+            ]}
+            titleStyle={[
+              styles.headerTitle,
+              { color: isDarkMode ? Colors.textDarkPrimary : Colors.white },
+            ]}
+          >
+            <RowComponent justifyContent="space-between" alignItems="center">
+              <TextComponent
+                type="caption"
+                style={[
+                  styles.headerText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkSecondary
+                      : Colors.buttonTextPrimary,
+                  },
+                ]}
+              >
+                Ngày đặt:{" "}
+                {new Date(orderDetail.createdAt).toLocaleDateString("vi-VN")}
+              </TextComponent>
+              <TagComponent
+                text={
+                  orderDetail.orderStatus === "COMPLETED"
+                    ? "Đã giao"
+                    : orderDetail.orderStatus === "SHIPPING"
+                    ? "Đang giao"
+                    : orderDetail.orderStatus === "PROCESSING"
+                    ? "Đang xử lý"
+                    : "Đã hủy"
+                }
+                type={getStatusTagType(orderDetail.orderStatus)}
+              />
+            </RowComponent>
+          </CardComponent>
+        </Animated.View>
 
         <SpaceComponent size={16} />
 
-        {/* Thông tin khách hàng */}
-        <CardComponent
-          title="Thông tin khách hàng"
-          style={[
-            styles.infoCard,
-            {
-              backgroundColor: isDarkMode ? Colors.crust : Colors.garlicCream,
-              borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
-            },
-          ]}
+        {/* Customer Info */}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              },
+            ],
+          }}
         >
-          <RowComponent alignItems="center">
-            <Ionicons
-              name="person-outline"
-              size={20}
-              color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-              style={styles.icon}
-            />
-            <TextComponent
-              style={[
-                styles.infoText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-              ]}
-            >
-              {orderDetail.userInfo.fullName}
-            </TextComponent>
-          </RowComponent>
-          <RowComponent alignItems="center">
-            <Ionicons
-              name="mail-outline"
-              size={20}
-              color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-              style={styles.icon}
-            />
-            <TextComponent
-              style={[
-                styles.infoText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-              ]}
-            >
-              {orderDetail.userInfo.email}
-            </TextComponent>
-          </RowComponent>
-          <RowComponent alignItems="center">
-            <Ionicons
-              name="call-outline"
-              size={20}
-              color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-              style={styles.icon}
-            />
-            <TextComponent
-              style={[
-                styles.infoText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-              ]}
-            >
-              {orderDetail.userInfo.phone}
-            </TextComponent>
-          </RowComponent>
-          <RowComponent alignItems="center">
-            <Ionicons
-              name="location-outline"
-              size={20}
-              color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-              style={styles.icon}
-            />
-            <TextComponent
-              style={[
-                styles.infoText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-              ]}
-            >
-              {orderDetail.shippingAddress}
-            </TextComponent>
-          </RowComponent>
-        </CardComponent>
+          <CardComponent
+            title="Thông tin khách hàng"
+            style={[
+              styles.infoCard,
+              {
+                backgroundColor: isDarkMode ? Colors.crust : Colors.garlicCream,
+                borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
+              },
+            ]}
+          >
+            <RowComponent alignItems="center">
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                style={styles.icon}
+              />
+              <TextComponent
+                style={[
+                  styles.infoText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                {orderDetail.user.fullName}
+              </TextComponent>
+            </RowComponent>
+            <RowComponent alignItems="center">
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                style={styles.icon}
+              />
+              <TextComponent
+                style={[
+                  styles.infoText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                {orderDetail.user.email}
+              </TextComponent>
+            </RowComponent>
+            <RowComponent alignItems="center">
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                style={styles.icon}
+              />
+              <TextComponent
+                style={[
+                  styles.infoText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                {orderDetail.user.phone}
+              </TextComponent>
+            </RowComponent>
+            <RowComponent alignItems="center">
+              <Ionicons
+                name="location-outline"
+                size={20}
+                color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                style={styles.icon}
+              />
+              <TextComponent
+                style={[
+                  styles.infoText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                {orderDetail.shippingAddress}
+              </TextComponent>
+            </RowComponent>
+          </CardComponent>
+        </Animated.View>
 
         <SpaceComponent size={16} />
 
-        {/* Thông tin chi nhánh */}
-        <CardComponent
-          title="Chi nhánh"
-          style={[
-            styles.infoCard,
-            {
-              backgroundColor: isDarkMode ? Colors.crust : Colors.garlicCream,
-              borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
-            },
-          ]}
+        {/* Branch Info */}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              },
+            ],
+          }}
         >
-          <RowComponent alignItems="center">
-            <Ionicons
-              name="storefront-outline"
-              size={20}
-              color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-              style={styles.icon}
-            />
-            <TextComponent
-              style={[
-                styles.infoText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-              ]}
-            >
-              {orderDetail.branchInfo.name}
-            </TextComponent>
-          </RowComponent>
-          <RowComponent alignItems="center">
-            <Ionicons
-              name="location-outline"
-              size={20}
-              color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-              style={styles.icon}
-            />
-            <TextComponent
-              style={[
-                styles.infoText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-              ]}
-            >
-              {orderDetail.branchInfo.address}
-            </TextComponent>
-          </RowComponent>
-          <RowComponent justifyContent="space-between">
-            <TextComponent
-              style={[
-                styles.infoText,
-                {
-                  color: isDarkMode
-                    ? Colors.textDarkPrimary
-                    : Colors.textLightPrimary,
-                },
-              ]}
-            >
-              SĐT: {orderDetail.branchInfo.phone}
-            </TextComponent>
-            <ButtonComponent
-              title="Liên hệ"
-              type="outline"
-              onPress={() =>
-                Linking.openURL(`tel:${orderDetail.branchInfo.phone}`)
-              }
-              style={styles.contactButton}
-              textStyle={[
-                styles.contactButtonText,
-                {
-                  color: isDarkMode
-                    ? Colors.buttonTertiary
-                    : Colors.buttonTertiary,
-                },
-              ]}
-            />
-          </RowComponent>
-        </CardComponent>
+          <CardComponent
+            title="Chi nhánh"
+            style={[
+              styles.infoCard,
+              {
+                backgroundColor: isDarkMode ? Colors.crust : Colors.garlicCream,
+                borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
+              },
+            ]}
+          >
+            <RowComponent alignItems="center">
+              <Ionicons
+                name="storefront-outline"
+                size={20}
+                color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                style={styles.icon}
+              />
+              <TextComponent
+                style={[
+                  styles.infoText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                {orderDetail.branch.name}
+              </TextComponent>
+            </RowComponent>
+            <RowComponent alignItems="center">
+              <Ionicons
+                name="location-outline"
+                size={20}
+                color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                style={styles.icon}
+              />
+              <TextComponent
+                style={[
+                  styles.infoText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                {orderDetail.branch.address}
+              </TextComponent>
+            </RowComponent>
+            <RowComponent justifyContent="space-between" alignItems="center">
+              <TextComponent
+                style={[
+                  styles.infoText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                SĐT: {orderDetail.branch.phone}
+              </TextComponent>
+              <ButtonComponent
+                title="Liên hệ"
+                type="outline"
+                onPress={() =>
+                  Linking.openURL(`tel:${orderDetail.branch.phone}`)
+                }
+                style={styles.contactButton}
+                textStyle={[
+                  styles.contactButtonText,
+                  {
+                    color: isDarkMode
+                      ? Colors.buttonTertiary
+                      : Colors.buttonTertiary,
+                  },
+                ]}
+                accessibilityLabel="Liên hệ chi nhánh"
+              />
+            </RowComponent>
+          </CardComponent>
+        </Animated.View>
 
         <SpaceComponent size={16} />
 
-        {/* Sản phẩm */}
+        {/* Items */}
         <TextComponent
           type="subheading"
           style={[
@@ -512,8 +607,8 @@ const OrderDetailScreen = () => {
 
         <SpaceComponent size={16} />
 
-        {/* Thông tin thanh toán */}
-        {orderDetail.paymentInfo && orderDetail.paymentInfo.length > 0 && (
+        {/* Payment Info */}
+        {orderDetail.payments?.length > 0 && (
           <>
             <TextComponent
               type="subheading"
@@ -528,92 +623,19 @@ const OrderDetailScreen = () => {
             >
               Thông tin thanh toán
             </TextComponent>
-            <CardComponent
-              style={[
-                styles.infoCard,
-                {
-                  backgroundColor: isDarkMode
-                    ? Colors.crust
-                    : Colors.garlicCream,
-                  borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
-                },
-              ]}
+            <Animated.View
+              style={{
+                opacity: fadeAnim,
+                transform: [
+                  {
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  },
+                ],
+              }}
             >
-              <RowComponent alignItems="center">
-                <Ionicons
-                  name="card-outline"
-                  size={20}
-                  color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-                  style={styles.icon}
-                />
-                <TextComponent
-                  style={[
-                    styles.infoText,
-                    {
-                      color: isDarkMode
-                        ? Colors.textDarkPrimary
-                        : Colors.textLightPrimary,
-                    },
-                  ]}
-                >
-                  Phương thức: {orderDetail.paymentInfo[0].paymentMethod}
-                </TextComponent>
-              </RowComponent>
-              <RowComponent alignItems="center">
-                <Ionicons
-                  name="checkmark-done-outline"
-                  size={20}
-                  color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-                  style={styles.icon}
-                />
-                <TextComponent
-                  style={[
-                    styles.infoText,
-                    {
-                      color: isDarkMode
-                        ? Colors.textDarkPrimary
-                        : Colors.textLightPrimary,
-                    },
-                  ]}
-                >
-                  Trạng thái: {orderDetail.paymentInfo[0].paymentStatus}
-                </TextComponent>
-              </RowComponent>
-              <TextComponent
-                style={[
-                  styles.infoText,
-                  {
-                    color: isDarkMode
-                      ? Colors.textDarkPrimary
-                      : Colors.textLightPrimary,
-                  },
-                ]}
-              >
-                Mã giao dịch: {orderDetail.paymentInfo[0].transactionCode}
-              </TextComponent>
-            </CardComponent>
-          </>
-        )}
-
-        <SpaceComponent size={16} />
-
-        {/* Điểm thưởng */}
-        {orderDetail.pointsEarnedOrSpent !== undefined &&
-          orderDetail.loyaltyTransactionDescription && (
-            <>
-              <TextComponent
-                type="subheading"
-                style={[
-                  styles.sectionTitle,
-                  {
-                    color: isDarkMode
-                      ? Colors.textDarkPrimary
-                      : Colors.textLightPrimary,
-                  },
-                ]}
-              >
-                Điểm thưởng
-              </TextComponent>
               <CardComponent
                 style={[
                   styles.infoCard,
@@ -629,7 +651,7 @@ const OrderDetailScreen = () => {
               >
                 <RowComponent alignItems="center">
                   <Ionicons
-                    name="star-outline"
+                    name="card-outline"
                     size={20}
                     color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
                     style={styles.icon}
@@ -644,17 +666,171 @@ const OrderDetailScreen = () => {
                       },
                     ]}
                   >
-                    {orderDetail.loyaltyTransactionDescription} (
-                    {orderDetail.pointsEarnedOrSpent} điểm)
+                    Phương thức: {orderDetail.payments[0].paymentMethod}
+                  </TextComponent>
+                </RowComponent>
+                <RowComponent alignItems="center">
+                  <Ionicons
+                    name="checkmark-done-outline"
+                    size={20}
+                    color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                    style={styles.icon}
+                  />
+                  <TextComponent
+                    style={[
+                      styles.infoText,
+                      {
+                        color: isDarkMode
+                          ? Colors.textDarkPrimary
+                          : Colors.textLightPrimary,
+                      },
+                    ]}
+                  >
+                    Trạng thái: {orderDetail.payments[0].status}
+                  </TextComponent>
+                </RowComponent>
+                <RowComponent alignItems="center">
+                  <Ionicons
+                    name="barcode-outline"
+                    size={20}
+                    color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                    style={styles.icon}
+                  />
+                  <TextComponent
+                    style={[
+                      styles.infoText,
+                      {
+                        color: isDarkMode
+                          ? Colors.textDarkPrimary
+                          : Colors.textLightPrimary,
+                      },
+                    ]}
+                  >
+                    Mã giao dịch: {orderDetail.payments[0].transactionCode}
                   </TextComponent>
                 </RowComponent>
               </CardComponent>
-            </>
-          )}
+            </Animated.View>
+          </>
+        )}
 
         <SpaceComponent size={16} />
 
-        {/* Ghi chú */}
+        {/* Shipment Info */}
+        {orderDetail.shipment && (
+          <>
+            <TextComponent
+              type="subheading"
+              style={[
+                styles.sectionTitle,
+                {
+                  color: isDarkMode
+                    ? Colors.textDarkPrimary
+                    : Colors.textLightPrimary,
+                },
+              ]}
+            >
+              Thông tin vận chuyển
+            </TextComponent>
+            <Animated.View
+              style={{
+                opacity: fadeAnim,
+                transform: [
+                  {
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <CardComponent
+                style={[
+                  styles.infoCard,
+                  {
+                    backgroundColor: isDarkMode
+                      ? Colors.crust
+                      : Colors.garlicCream,
+                    borderColor: isDarkMode
+                      ? Colors.borderDark
+                      : Colors.mushroom,
+                  },
+                ]}
+              >
+                <RowComponent alignItems="center">
+                  <Ionicons
+                    name="bicycle-outline"
+                    size={20}
+                    color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                    style={styles.icon}
+                  />
+                  <TextComponent
+                    style={[
+                      styles.infoText,
+                      {
+                        color: isDarkMode
+                          ? Colors.textDarkPrimary
+                          : Colors.textLightPrimary,
+                      },
+                    ]}
+                  >
+                    Trạng thái: {orderDetail.shipment.deliveryStatus}
+                  </TextComponent>
+                </RowComponent>
+                {orderDetail.shipment.trackingEvents?.map((event) => (
+                  <RowComponent
+                    key={event.id}
+                    alignItems="flex-start"
+                    style={styles.trackingEvent}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={20}
+                      color={
+                        isDarkMode ? Colors.iconInactive : Colors.iconActive
+                      }
+                      style={styles.icon}
+                    />
+                    <View>
+                      <TextComponent
+                        style={[
+                          styles.infoText,
+                          {
+                            color: isDarkMode
+                              ? Colors.textDarkPrimary
+                              : Colors.textLightPrimary,
+                          },
+                        ]}
+                      >
+                        {event.deliveryStatus} -{" "}
+                        {new Date(event.eventTime).toLocaleString("vi-VN")}
+                      </TextComponent>
+                      {event.note && (
+                        <TextComponent
+                          style={[
+                            styles.infoText,
+                            {
+                              color: isDarkMode
+                                ? Colors.textDarkSecondary
+                                : Colors.textLightSecondary,
+                            },
+                          ]}
+                        >
+                          Ghi chú: {event.note}
+                        </TextComponent>
+                      )}
+                    </View>
+                  </RowComponent>
+                ))}
+              </CardComponent>
+            </Animated.View>
+          </>
+        )}
+
+        <SpaceComponent size={16} />
+
+        {/* Note */}
         {orderDetail.note && (
           <>
             <TextComponent
@@ -670,60 +846,133 @@ const OrderDetailScreen = () => {
             >
               Ghi chú
             </TextComponent>
-            <CardComponent
-              style={[
-                styles.infoCard,
-                {
-                  backgroundColor: isDarkMode
-                    ? Colors.crust
-                    : Colors.garlicCream,
-                  borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
-                },
-              ]}
+            <Animated.View
+              style={{
+                opacity: fadeAnim,
+                transform: [
+                  {
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  },
+                ],
+              }}
             >
-              <RowComponent alignItems="center">
-                <Ionicons
-                  name="document-text-outline"
-                  size={20}
-                  color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
-                  style={styles.icon}
-                />
-                <TextComponent
-                  style={[
-                    styles.infoText,
-                    {
-                      color: isDarkMode
-                        ? Colors.textDarkPrimary
-                        : Colors.textLightPrimary,
-                    },
-                  ]}
-                >
-                  {orderDetail.note}
-                </TextComponent>
-              </RowComponent>
-            </CardComponent>
+              <CardComponent
+                style={[
+                  styles.infoCard,
+                  {
+                    backgroundColor: isDarkMode
+                      ? Colors.crust
+                      : Colors.garlicCream,
+                    borderColor: isDarkMode
+                      ? Colors.borderDark
+                      : Colors.mushroom,
+                  },
+                ]}
+              >
+                <RowComponent alignItems="center">
+                  <Ionicons
+                    name="document-text-outline"
+                    size={20}
+                    color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
+                    style={styles.icon}
+                  />
+                  <TextComponent
+                    style={[
+                      styles.infoText,
+                      {
+                        color: isDarkMode
+                          ? Colors.textDarkPrimary
+                          : Colors.textLightPrimary,
+                      },
+                    ]}
+                  >
+                    {orderDetail.note}
+                  </TextComponent>
+                </RowComponent>
+              </CardComponent>
+            </Animated.View>
           </>
         )}
 
         <SpaceComponent size={16} />
 
-        {/* Tổng cộng */}
-        <CardComponent
-          style={[
-            styles.totalCard,
-            {
-              backgroundColor: isDarkMode
-                ? Colors.backgroundDark
-                : Colors.mozzarella,
-              borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
-            },
-          ]}
+        {/* Total */}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              },
+            ],
+          }}
         >
-          <RowComponent justifyContent="space-between">
+          <CardComponent
+            style={[
+              styles.totalCard,
+              {
+                backgroundColor: isDarkMode ? Colors.crust : Colors.mozzarella,
+                borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
+              },
+            ]}
+          >
+            <RowComponent justifyContent="space-between" alignItems="center">
+              <TextComponent
+                type="subheading"
+                style={[
+                  styles.totalText,
+                  {
+                    color: isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  },
+                ]}
+              >
+                Tổng cộng
+              </TextComponent>
+              <TextComponent
+                type="subheading"
+                style={[
+                  styles.totalPrice,
+                  { color: isDarkMode ? Colors.accent : Colors.accent },
+                ]}
+              >
+                {orderDetail.totalPrice.toLocaleString("vi-VN")} VNĐ
+              </TextComponent>
+            </RowComponent>
+          </CardComponent>
+        </Animated.View>
+
+        <SpaceComponent size={16} />
+
+        {/* Actions */}
+        <RowComponent justifyContent="space-between">
+          <Pressable
+            onPress={() => {
+              router.back();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            style={({ pressed }) => [
+              styles.actionButton,
+              {
+                borderColor: isDarkMode ? Colors.borderDark : Colors.crust,
+                backgroundColor: isDarkMode
+                  ? Colors.backgroundDark
+                  : Colors.white,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+            accessibilityLabel="Quay lại danh sách đơn hàng"
+          >
             <TextComponent
-              type="subheading"
               style={[
-                styles.totalText,
+                styles.actionButtonText,
                 {
                   color: isDarkMode
                     ? Colors.textDarkPrimary
@@ -731,165 +980,163 @@ const OrderDetailScreen = () => {
                 },
               ]}
             >
-              Tổng cộng
+              Quay lại
             </TextComponent>
-            <TextComponent
-              type="subheading"
-              style={[
-                styles.totalPrice,
-                { color: isDarkMode ? Colors.accent : Colors.accent },
-              ]}
-            >
-              {orderDetail.totalPrice.toLocaleString("vi-VN")} VNĐ
-            </TextComponent>
-          </RowComponent>
-        </CardComponent>
-
-        <SpaceComponent size={16} />
-
-        {/* Nút hành động */}
-        <RowComponent justifyContent="space-between">
-          <ButtonComponent
-            title="Quay lại"
-            type="outline"
-            onPress={() => router.back()}
-            style={[
-              styles.backButton,
-              {
-                borderColor: isDarkMode ? Colors.borderDark : Colors.crust,
-                backgroundColor: isDarkMode
-                  ? Colors.backgroundDark
-                  : Colors.white,
-              },
-            ]}
-            textStyle={[
-              styles.backButtonText,
-              {
-                color: isDarkMode
-                  ? Colors.textDarkPrimary
-                  : Colors.textLightPrimary,
-              },
-            ]}
-          />
+          </Pressable>
           {orderDetail.orderStatus === "PROCESSING" && (
-            <ButtonComponent
-              title="Hủy đơn"
-              type="outline"
+            <Pressable
               onPress={confirmCancelOrder}
-              style={[
-                styles.backButton,
+              style={({ pressed }) => [
+                styles.actionButton,
                 {
                   borderColor: Colors.error,
                   backgroundColor: isDarkMode
                     ? Colors.backgroundDark
                     : Colors.white,
+                  opacity: pressed ? 0.7 : 1,
                 },
               ]}
-              textStyle={[styles.backButtonText, { color: Colors.error }]}
-            />
+              accessibilityLabel="Hủy đơn hàng"
+            >
+              <TextComponent
+                style={[styles.actionButtonText, { color: Colors.error }]}
+              >
+                Hủy đơn
+              </TextComponent>
+            </Pressable>
           )}
         </RowComponent>
 
-        <SpaceComponent size={16} />
+        <SpaceComponent size={24} />
       </ScrollView>
-      <ToastComponent
-        message={toast.message}
-        type={toast.type}
-        visible={toast.visible}
-        onHide={handleToastHide}
-        duration={3000}
-        style={styles.toast}
-      />
     </ContainerComponent>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  scrollContent: {
+    paddingBottom: 16,
   },
   headerCard: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
   },
   headerText: {
     fontSize: 14,
+    lineHeight: 20,
   },
   infoCard: {
     borderWidth: 1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     elevation: 3,
-    marginVertical: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   orderItemCard: {
     borderWidth: 1,
-    marginVertical: 8,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 16,
+    marginVertical: 8,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   totalCard: {
     borderWidth: 1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 12,
     marginLeft: 8,
+    marginBottom: 12,
   },
   itemImage: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
     borderRadius: 12,
     marginRight: 12,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.mozzarella,
+  },
+  placeholderImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    marginRight: 12,
+    backgroundColor: Colors.mozzarella,
+    justifyContent: "center",
+    alignItems: "center",
   },
   itemDetails: {
     flex: 1,
   },
   itemName: {
-    fontWeight: "700",
     fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 22,
   },
   itemDescription: {
-    marginVertical: 4,
+    fontSize: 12,
     lineHeight: 18,
+    marginVertical: 4,
   },
   optionText: {
-    marginLeft: 8,
     fontSize: 12,
+    lineHeight: 18,
+    marginLeft: 8,
   },
   itemTotal: {
-    marginTop: 8,
-    textAlign: "right",
+    fontSize: 16,
     fontWeight: "700",
+    textAlign: "right",
+    marginTop: 8,
   },
   totalText: {
+    fontSize: 16,
     fontWeight: "700",
   },
   totalPrice: {
-    fontWeight: "700",
     fontSize: 18,
+    fontWeight: "700",
   },
-  backButton: {
+  actionButton: {
     flex: 1,
-    marginRight: 8,
+    paddingVertical: 12,
     borderWidth: 1,
     borderRadius: 12,
+    alignItems: "center",
+    marginHorizontal: 4,
   },
-  backButtonText: {
+  actionButtonText: {
     fontSize: 16,
+    fontWeight: "600",
   },
   contactButton: {
     paddingHorizontal: 12,
@@ -899,12 +1146,17 @@ const styles = StyleSheet.create({
   },
   contactButtonText: {
     fontSize: 14,
+    fontWeight: "600",
   },
   icon: {
     marginRight: 8,
   },
   infoText: {
     fontSize: 14,
+    lineHeight: 20,
+  },
+  trackingEvent: {
+    marginTop: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -914,14 +1166,10 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     borderWidth: 1,
-    borderRadius: 12,
-  },
-  toast: {
-    borderRadius: 8,
-    padding: 12,
-    marginHorizontal: 16,
-    bottom: 20,
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 8,
   },
 });
 
-export default OrderDetailScreen;
+export default React.memo(OrderDetailScreen);

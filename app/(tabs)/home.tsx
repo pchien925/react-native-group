@@ -1,4 +1,3 @@
-// components/home/HomeScreen.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import ContainerComponent from "@/components/common/ContainerComponent";
@@ -9,8 +8,6 @@ import BannerSectionComponent from "@/components/home/BannerSwiperComponent";
 import { banners } from "@/data/bannerData";
 import RowComponent from "@/components/common/RowComponent";
 import TextComponent from "@/components/common/TextComponent";
-import ToastComponent from "@/components/common/ToastComponent";
-import ItemCustomizationModal from "@/components/menu/ItemCustomizationModal";
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -23,6 +20,8 @@ import {
   getOptionsByMenuItemApi,
 } from "@/services/api";
 import { router } from "expo-router";
+import Toast from "react-native-toast-message"; // Import Toast
+import ItemCustomizationModal from "@/components/menu/ItemCustomizationModal";
 
 const HomeScreen: React.FC = () => {
   console.log("HomeScreen rendered");
@@ -42,10 +41,8 @@ const HomeScreen: React.FC = () => {
   const [selectedOptions, setSelectedOptions] = useState<{
     [key: number]: IOptionValue;
   }>({});
+
   const [quantity, setQuantity] = useState(1);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   // Lấy danh mục từ API
   useEffect(() => {
@@ -61,9 +58,11 @@ const HomeScreen: React.FC = () => {
         }
         setCategories(response.data);
       } catch (error: any) {
-        setToastMessage(error.message || "Không thể tải danh mục");
-        setToastType("error");
-        setToastVisible(true);
+        Toast.show({
+          type: "error",
+          text1: error.message || "Không thể tải danh mục",
+          visibilityTime: 1200,
+        });
       } finally {
         setCategoriesLoading(false);
       }
@@ -87,9 +86,11 @@ const HomeScreen: React.FC = () => {
         }
         setFeaturedOffers(response.data.content);
       } catch (error: any) {
-        setToastMessage(error.message || "Không thể tải món nổi bật");
-        setToastType("error");
-        setToastVisible(true);
+        Toast.show({
+          type: "error",
+          text1: error.message || "Không thể tải món nổi bật",
+          visibilityTime: 1200,
+        });
       } finally {
         setOffersLoading(false);
       }
@@ -115,9 +116,11 @@ const HomeScreen: React.FC = () => {
       setModalVisible(true);
     } catch (error: any) {
       console.error("Error fetching options:", error);
-      setToastMessage(error.message || "Không thể tải tùy chọn món ăn");
-      setToastType("error");
-      setToastVisible(true);
+      Toast.show({
+        type: "error",
+        text1: error.message || "Không thể tải tùy chọn món ăn",
+        visibilityTime: 1200,
+      });
     } finally {
       setOptionsLoading(false);
     }
@@ -126,9 +129,11 @@ const HomeScreen: React.FC = () => {
   const handleConfirmAdd = useCallback(() => {
     if (selectedItem) {
       if (Object.keys(selectedOptions).length === 0 && options.length > 0) {
-        setToastMessage("Vui lòng chọn ít nhất một tùy chọn.");
-        setToastType("error");
-        setToastVisible(true);
+        Toast.show({
+          type: "error",
+          text1: "Vui lòng chọn ít nhất một tùy chọn.",
+          visibilityTime: 1200,
+        });
         return;
       }
       dispatch(
@@ -139,25 +144,22 @@ const HomeScreen: React.FC = () => {
         })
       ).then((action) => {
         if (addToCart.fulfilled.match(action)) {
-          setToastMessage(`${selectedItem.name} đã được thêm vào giỏ hàng!`);
-          setToastType("success");
+          Toast.show({
+            type: "success",
+            text1: `${selectedItem.name} đã được thêm vào giỏ hàng!`,
+            visibilityTime: 1200,
+          });
         } else {
-          setToastMessage(
-            (action.payload as string) || "Không thể thêm vào giỏ hàng"
-          );
-          setToastType("error");
+          Toast.show({
+            type: "error",
+            text1: (action.payload as string) || "Không thể thêm vào giỏ hàng",
+            visibilityTime: 1200,
+          });
         }
-        setToastVisible(true);
       });
       setModalVisible(false);
     }
   }, [dispatch, selectedItem, selectedOptions, options, quantity]);
-
-  const handleToastHide = useCallback(() => {
-    setToastVisible(false);
-    setToastMessage("");
-    setToastType("success");
-  }, []);
 
   const handleModalClose = useCallback(() => {
     setModalVisible(false);
@@ -205,8 +207,7 @@ const HomeScreen: React.FC = () => {
           },
         ]}
         onPress={() => {
-          console.log("Navigate to all stores");
-          // TODO: Điều hướng đến màn hình danh sách cửa hàng
+          router.push("/branch");
         }}
       >
         <TextComponent
@@ -275,13 +276,6 @@ const HomeScreen: React.FC = () => {
         onConfirm={handleConfirmAdd}
         isDarkMode={isDarkMode}
         loading={optionsLoading}
-      />
-      <ToastComponent
-        message={toastMessage}
-        type={toastType}
-        visible={toastVisible}
-        onHide={handleToastHide}
-        duration={1200}
       />
     </ContainerComponent>
   );

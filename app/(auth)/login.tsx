@@ -166,17 +166,9 @@ const LoginScreen: React.FC = () => {
 
         {/* Văn bản phụ */}
         <TextComponent style={styles.termsText}>
-          Thỉnh thoảng thêm về điều khoản và điều kiện thành viên
+          Chấp nhận những điều khoản và điều kiện thành viên
         </TextComponent>
       </View>
-
-      {/* Văn bản dưới cùng */}
-      <TextComponent style={styles.termsText}>
-        Phiên bản tồn đọng v0.19e.
-      </TextComponent>
-      <TextComponent style={styles.termsText}>
-        Độ nhiệt độ và thời gian cần sử dụng.
-      </TextComponent>
 
       <ToastComponent
         message={toast.message}

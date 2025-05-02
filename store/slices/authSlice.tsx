@@ -2,7 +2,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCurrentUserApi, loginApi, refreshTokenApi } from "@/services/api";
-import { handleApiError } from "@/utils/errorHandler";
+import { handleApiError } from "@/utils/error.handler";
 
 interface AuthState {
   user: IUser | null;

@@ -15,7 +15,7 @@ export const getMenuItemsByCategoryApi = (
   sort: string = "id",
   direction: string = "asc"
 ): Promise<IBackendResponse<IPaginationData<IMenuItem>>> => {
-  const url = `/api/v1/menu-items?categoryId=${categoryId}&page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
+  const url = `/api/v1/menu-categories/${categoryId}/menu-items?page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
   return axios.get(url);
 };
 
@@ -143,7 +143,7 @@ export const getUserOrdersApi = (
   size: number,
   sort: string = "id",
   direction: string = "desc"
-): Promise<IBackendResponse<IPaginationData<IOrderSummary>>> => {
+): Promise<IBackendResponse<IPaginationData<IOrderInfo>>> => {
   const url = `/api/v1/orders?userId=${userId}&page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
   return axios.get(url);
 };

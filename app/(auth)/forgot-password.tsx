@@ -29,7 +29,7 @@ const ForgotPasswordScreen: React.FC = () => {
         visible: true,
       });
       setIsLoading(true);
-      setTimeout(() => router.replace("verify-email"), 2000);
+      setTimeout(() => router.replace("/(auth)/verify-email"), 2000);
     } else {
       setToast({
         message: "Vui lòng nhập email",
@@ -91,7 +91,7 @@ const ForgotPasswordScreen: React.FC = () => {
             title="Quay lại Đăng Nhập"
             style={{ paddingHorizontal: 4 }}
             textStyle={styles.link}
-            onPress={() => router.replace("login")}
+            onPress={() => router.replace("/(auth)/login")}
           />
         </RowComponent>
 

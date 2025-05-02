@@ -3,6 +3,7 @@ import { StyleSheet, FlatList } from "react-native";
 import MenuCategoryComponent from "@/components/MenuCategory/MenuCategoryComponent";
 import SectionTitle from "@/components/home/SectionTitleComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
+import { router } from "expo-router";
 
 interface CategorySectionProps {
   categories: IMenuCategory[];
@@ -33,7 +34,7 @@ const CategorySectionComponent: React.FC<CategorySectionProps> = ({
         showButton
         buttonTitle="Xem thực đơn"
         onButtonPress={() => {
-          console.log("Navigate to all categories");
+          router.push("/menu");
         }}
       />
       <FlatList

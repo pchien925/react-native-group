@@ -1,4 +1,3 @@
-// components/cart/CartScreen.tsx
 import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet } from "react-native";
 import ContainerComponent from "@/components/common/ContainerComponent";
@@ -10,13 +9,13 @@ import ModalComponent from "@/components/common/ModalComponent";
 import ButtonComponent from "@/components/common/ButtonComponent";
 import TextComponent from "@/components/common/TextComponent";
 import RowComponent from "@/components/common/RowComponent";
-import ToastComponent from "@/components/common/ToastComponent";
 import { Colors } from "@/constants/Colors";
 import { useSelector } from "react-redux";
 import { RootState, useAppDispatch } from "@/store/store";
 import { fetchCart } from "@/store/slices/cartSlice";
 import { router } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
+import Toast from "react-native-toast-message";
 
 const CartScreen = () => {
   const dispatch = useAppDispatch();
@@ -25,27 +24,7 @@ const CartScreen = () => {
   const status = useSelector((state: RootState) => state.cart.status);
   const error = useSelector((state: RootState) => state.cart.error);
 
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "warning" | "error" | "info" | "default";
-    visible: boolean;
-  }>({
-    message: "",
-    type: "default",
-    visible: false,
-  });
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
-
-  const showToast = (
-    message: string,
-    type: "success" | "warning" | "error" | "info" | "default"
-  ) => {
-    setToast({ message, type, visible: true });
-  };
-
-  const hideToast = () => {
-    setToast({ ...toast, visible: false });
-  };
 
   useEffect(() => {
     if (status === "idle") {
@@ -58,7 +37,11 @@ const CartScreen = () => {
       if (error.includes("Current user not found")) {
         router.replace("/login");
       } else {
-        showToast(error, "error");
+        Toast.show({
+          type: "error",
+          text1: error,
+          visibilityTime: 3000,
+        });
       }
     }
   }, [error]);
@@ -100,13 +83,6 @@ const CartScreen = () => {
           />
         </>
       )}
-      <ToastComponent
-        message={toast.message}
-        type={toast.type}
-        visible={toast.visible}
-        onHide={hideToast}
-        duration={3000}
-      />
       <ModalComponent
         visible={showCheckoutConfirm}
         title="Xác nhận thanh toán"

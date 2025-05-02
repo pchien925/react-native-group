@@ -1,12 +1,10 @@
-// screens/MenuItemDetail.tsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, JSX } from "react";
 import { StyleSheet, View, ScrollView, TouchableOpacity } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
 import TextComponent from "@/components/common/TextComponent";
 import ButtonComponent from "@/components/common/ButtonComponent";
-import ToastComponent from "@/components/common/ToastComponent";
 import ImageComponent from "@/components/common/ImageComponent";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { Colors } from "@/constants/Colors";
@@ -15,6 +13,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAppDispatch } from "@/store/store";
 import { addToCart } from "@/store/slices/cartSlice";
 import { getMenuItemByIdApi, getOptionsByMenuItemApi } from "@/services/api";
+import Toast from "react-native-toast-message"; // Import Toast
 
 const MenuItemDetail = () => {
   console.log("MenuItemDetail rendered");
@@ -30,9 +29,6 @@ const MenuItemDetail = () => {
     [key: number]: IOptionValue;
   }>({});
   const [quantity, setQuantity] = useState(1);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   // Lấy thông tin món ăn từ API
   useEffect(() => {
@@ -45,9 +41,11 @@ const MenuItemDetail = () => {
         }
         setItem(response.data);
       } catch (error: any) {
-        setToastMessage(error.message || "Không thể tải món ăn");
-        setToastType("error");
-        setToastVisible(true);
+        Toast.show({
+          type: "error",
+          text1: error.message || "Không thể tải món ăn",
+          visibilityTime: 1200,
+        });
         setItem(null);
       } finally {
         setItemLoading(false);
@@ -72,9 +70,11 @@ const MenuItemDetail = () => {
         );
         setOptions(validOptions);
       } catch (error: any) {
-        setToastMessage(error.message || "Không thể tải tùy chọn món ăn");
-        setToastType("error");
-        setToastVisible(true);
+        Toast.show({
+          type: "error",
+          text1: error.message || "Không thể tải tùy chọn món ăn",
+          visibilityTime: 1200,
+        });
       } finally {
         setOptionsLoading(false);
       }
@@ -108,23 +108,20 @@ const MenuItemDetail = () => {
       })
     ).then((action) => {
       if (addToCart.fulfilled.match(action)) {
-        setToastMessage(`${item.name} đã được thêm vào giỏ hàng!`);
-        setToastType("success");
+        Toast.show({
+          type: "success",
+          text1: `${item.name} đã được thêm vào giỏ hàng!`,
+          visibilityTime: 1200,
+        });
       } else {
-        setToastMessage(
-          (action.payload as string) || "Không thể thêm vào giỏ hàng"
-        );
-        setToastType("error");
+        Toast.show({
+          type: "error",
+          text1: (action.payload as string) || "Không thể thêm vào giỏ hàng",
+          visibilityTime: 1200,
+        });
       }
-      setToastVisible(true);
     });
   }, [dispatch, item, selectedOptions, quantity]);
-
-  const handleToastHide = useCallback(() => {
-    setToastVisible(false);
-    setToastMessage("");
-    setToastType("success");
-  }, []);
 
   const totalPrice = useMemo(
     () => calculateTotalPrice(),
@@ -133,7 +130,6 @@ const MenuItemDetail = () => {
 
   // Nội dung render được xác định sau khi gọi tất cả hook
   let content: JSX.Element;
-
   if (itemLoading) {
     content = (
       <ContainerComponent>
@@ -267,24 +263,6 @@ const MenuItemDetail = () => {
                       styles.optionButton,
                       selectedOptions[option.id]?.id === value.id &&
                         styles.selectedOption,
-                      {
-                        borderColor: isDarkMode
-                          ? Colors.borderDark
-                          : Colors.borderLight,
-                        backgroundColor: isDarkMode
-                          ? Colors.backgroundDark
-                          : Colors.white,
-                        shadowColor: Colors.black,
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity:
-                          selectedOptions[option.id]?.id === value.id
-                            ? 0.2
-                            : 0.1,
-                        shadowRadius:
-                          selectedOptions[option.id]?.id === value.id ? 4 : 2,
-                        elevation:
-                          selectedOptions[option.id]?.id === value.id ? 3 : 2,
-                      },
                     ]}
                     onPress={() => handleOptionSelect(option.id, value)}
                   >
@@ -457,13 +435,6 @@ const MenuItemDetail = () => {
           />
           <SpaceComponent size={24} />
         </ScrollView>
-        <ToastComponent
-          message={toastMessage}
-          type={toastType}
-          visible={toastVisible}
-          onHide={handleToastHide}
-          duration={1200}
-        />
       </ContainerComponent>
     );
   }

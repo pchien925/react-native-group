@@ -1,24 +1,22 @@
-// screens/CheckoutScreen.tsx
 import React, { useState, useEffect } from "react";
-import { StyleSheet, ScrollView, View } from "react-native";
+import { StyleSheet, ScrollView, View, Pressable } from "react-native";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import TextComponent from "@/components/common/TextComponent";
 import InputComponent from "@/components/common/InputComponent";
 import ButtonComponent from "@/components/common/ButtonComponent";
 import LoadingComponent from "@/components/common/LoadingComponent";
-import ToastComponent from "@/components/common/ToastComponent";
 import RowComponent from "@/components/common/RowComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
 import ModalComponent from "@/components/common/ModalComponent";
 import CardComponent from "@/components/common/CardComponent";
 import { Colors } from "@/constants/Colors";
-import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSelector } from "react-redux";
 import { RootState, useAppDispatch } from "@/store/store";
 import { createOrder, resetCart } from "@/store/slices/cartSlice";
 import { getAllBranchesApi } from "@/services/api";
 import { router } from "expo-router";
+import Toast from "react-native-toast-message";
 
 const CheckoutScreen = () => {
   const dispatch = useAppDispatch();
@@ -38,28 +36,7 @@ const CheckoutScreen = () => {
   const [branchModalVisible, setBranchModalVisible] = useState(false);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [branchesError, setBranchesError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "warning" | "error" | "info" | "default";
-    visible: boolean;
-  }>({
-    message: "",
-    type: "default",
-    visible: false,
-  });
 
-  const showToast = (
-    message: string,
-    type: "success" | "warning" | "error" | "info" | "default"
-  ) => {
-    setToast({ message, type, visible: true });
-  };
-
-  const hideToast = () => {
-    setToast({ ...toast, visible: false });
-  };
-
-  // Lấy danh sách chi nhánh
   useEffect(() => {
     const fetchBranches = async () => {
       setBranchesLoading(true);
@@ -72,11 +49,19 @@ const CheckoutScreen = () => {
           }
         } else {
           setBranchesError("Không tìm thấy chi nhánh");
-          showToast("Không tìm thấy chi nhánh", "error");
+          Toast.show({
+            type: "error",
+            text1: "Không tìm thấy chi nhánh",
+            visibilityTime: 3000,
+          });
         }
       } catch (error: any) {
         setBranchesError(error.message || "Lỗi khi tải chi nhánh");
-        showToast(error.message || "Lỗi khi tải chi nhánh", "error");
+        Toast.show({
+          type: "error",
+          text1: error.message || "Lỗi khi tải chi nhánh",
+          visibilityTime: 3000,
+        });
       } finally {
         setBranchesLoading(false);
       }
@@ -86,10 +71,11 @@ const CheckoutScreen = () => {
 
   const handleCheckout = async () => {
     if (!cart || !user || !branchId) {
-      showToast(
-        "Giỏ hàng, thông tin người dùng hoặc chi nhánh không hợp lệ",
-        "error"
-      );
+      Toast.show({
+        type: "error",
+        text1: "Giỏ hàng, thông tin người dùng hoặc chi nhánh không hợp lệ",
+        visibilityTime: 3000,
+      });
       return;
     }
     try {
@@ -103,17 +89,29 @@ const CheckoutScreen = () => {
           branchId,
         })
       ).unwrap();
-      showToast("Đặt hàng thành công!", "success");
+      Toast.show({
+        type: "success",
+        text1: "Đặt hàng thành công!",
+        visibilityTime: 3000,
+      });
       dispatch(resetCart());
-      router.replace("home");
+      router.replace("/(tabs)/home");
     } catch (error: any) {
-      showToast(error.message || "Lỗi khi đặt hàng", "error");
+      Toast.show({
+        type: "error",
+        text1: error.message || "Lỗi khi đặt hàng",
+        visibilityTime: 3000,
+      });
     }
   };
 
   useEffect(() => {
     if (orderError) {
-      showToast(orderError, "error");
+      Toast.show({
+        type: "error",
+        text1: orderError,
+        visibilityTime: 3000,
+      });
     }
   }, [orderError]);
 
@@ -153,7 +151,7 @@ const CheckoutScreen = () => {
           <ButtonComponent
             title="Quay lại giỏ hàng"
             type="primary"
-            onPress={() => router.push("/(tabs)/cart")}
+            onPress={() => router.push("/cart")}
             style={[
               styles.backButton,
               {
@@ -182,14 +180,14 @@ const CheckoutScreen = () => {
         },
       ]}
     >
-      <SpaceComponent size={16} />
+      <SpaceComponent size={20} />
       <CardComponent
         style={[
           styles.sectionCard,
           {
             backgroundColor: isDarkMode
-              ? Colors.backgroundDark
-              : Colors.backgroundLight,
+              ? Colors.surfaceDark
+              : Colors.surfaceLight,
           },
         ]}
       >
@@ -202,7 +200,7 @@ const CheckoutScreen = () => {
             },
           ]}
         >
-          Thông tin thanh toán
+          Tổng quan đơn hàng
         </TextComponent>
         <TextComponent
           type="body"
@@ -219,14 +217,14 @@ const CheckoutScreen = () => {
           {cart.cartItems.length} món)
         </TextComponent>
       </CardComponent>
-      <SpaceComponent size={16} />
+      <SpaceComponent size={20} />
       <CardComponent
         style={[
           styles.sectionCard,
           {
             backgroundColor: isDarkMode
-              ? Colors.backgroundDark
-              : Colors.backgroundLight,
+              ? Colors.surfaceDark
+              : Colors.surfaceLight,
           },
         ]}
       >
@@ -248,13 +246,8 @@ const CheckoutScreen = () => {
           style={[
             styles.branchButton,
             {
-              borderColor: isDarkMode ? Colors.primary : Colors.accent,
+              borderColor: isDarkMode ? Colors.accent : Colors.primary,
               backgroundColor: isDarkMode ? Colors.crust : Colors.white,
-              shadowColor: Colors.black,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 3,
             },
           ]}
           textStyle={{
@@ -266,14 +259,14 @@ const CheckoutScreen = () => {
           accessibilityLabel="Chọn chi nhánh giao hàng"
         />
       </CardComponent>
-      <SpaceComponent size={16} />
+      <SpaceComponent size={20} />
       <CardComponent
         style={[
           styles.sectionCard,
           {
             backgroundColor: isDarkMode
-              ? Colors.backgroundDark
-              : Colors.backgroundLight,
+              ? Colors.surfaceDark
+              : Colors.surfaceLight,
           },
         ]}
       >
@@ -295,13 +288,8 @@ const CheckoutScreen = () => {
           style={[
             styles.input,
             {
-              borderColor: isDarkMode ? Colors.primary : Colors.accent,
+              borderColor: isDarkMode ? Colors.accent : Colors.primary,
               backgroundColor: isDarkMode ? Colors.crust : Colors.white,
-              shadowColor: Colors.black,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 3,
             },
           ]}
           placeholderTextColor={
@@ -316,13 +304,8 @@ const CheckoutScreen = () => {
           style={[
             styles.input,
             {
-              borderColor: isDarkMode ? Colors.primary : Colors.accent,
+              borderColor: isDarkMode ? Colors.accent : Colors.primary,
               backgroundColor: isDarkMode ? Colors.crust : Colors.white,
-              shadowColor: Colors.black,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 3,
             },
           ]}
           multiline
@@ -333,14 +316,14 @@ const CheckoutScreen = () => {
           accessibilityLabel="Nhập ghi chú cho đơn hàng"
         />
       </CardComponent>
-      <SpaceComponent size={16} />
+      <SpaceComponent size={20} />
       <CardComponent
         style={[
           styles.sectionCard,
           {
             backgroundColor: isDarkMode
-              ? Colors.backgroundDark
-              : Colors.backgroundLight,
+              ? Colors.surfaceDark
+              : Colors.surfaceLight,
           },
         ]}
       >
@@ -358,71 +341,79 @@ const CheckoutScreen = () => {
         <RowComponent style={styles.paymentMethods}>
           {["COD", "VNPAY", "MOMO", "BANK_TRANSFER", "CREDIT_CARD"].map(
             (method) => (
-              <ButtonComponent
+              <Pressable
                 key={method}
-                title={method}
-                type={paymentMethod === method ? "primary" : "outline"}
                 onPress={() => setPaymentMethod(method as any)}
-                style={[
+                style={({ pressed }) => [
                   styles.paymentButton,
                   {
                     borderColor:
                       paymentMethod === method
-                        ? Colors.primary
+                        ? Colors.accent
                         : isDarkMode
                         ? Colors.primary
-                        : Colors.accent,
+                        : Colors.borderLight,
                     backgroundColor:
                       paymentMethod === method
-                        ? Colors.primary
+                        ? isDarkMode
+                          ? Colors.primary
+                          : Colors.accent
                         : isDarkMode
                         ? Colors.crust
                         : Colors.white,
-                    shadowColor: Colors.black,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 3,
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
                   },
                 ]}
-                textStyle={{
-                  color:
-                    paymentMethod === method
-                      ? Colors.white
-                      : isDarkMode
-                      ? Colors.textDarkPrimary
-                      : Colors.textLightPrimary,
-                  fontWeight: paymentMethod === method ? "700" : "500",
-                }}
-                accessibilityLabel={`Chọn phương thức ${method}`}
-              />
+              >
+                <TextComponent
+                  type="body"
+                  style={{
+                    color:
+                      paymentMethod === method
+                        ? Colors.white
+                        : isDarkMode
+                        ? Colors.textDarkPrimary
+                        : Colors.textLightPrimary,
+                    fontWeight: paymentMethod === method ? "700" : "500",
+                  }}
+                >
+                  {method}
+                </TextComponent>
+              </Pressable>
             )
           )}
         </RowComponent>
       </CardComponent>
-      <SpaceComponent size={16} />
-      <ButtonComponent
-        title="Xác nhận đặt hàng"
-        type="primary"
+      <SpaceComponent size={20} />
+      <Pressable
         onPress={handleCheckout}
         disabled={orderStatus === "loading" || !shippingAddress || !branchId}
-        style={[
+        style={({ pressed }) => [
           styles.confirmButton,
           {
             backgroundColor: isDarkMode ? Colors.primary : Colors.accent,
-            shadowColor: Colors.black,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 6,
-            elevation: 5,
+            opacity:
+              orderStatus === "loading" || !shippingAddress || !branchId
+                ? 0.6
+                : pressed
+                ? 0.8
+                : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
           },
         ]}
-        textStyle={{
-          color: Colors.white,
-          fontWeight: "700",
-        }}
         accessibilityLabel="Xác nhận đặt hàng"
-      />
+      >
+        <TextComponent
+          type="subheading"
+          style={{
+            color: Colors.white,
+            fontWeight: "700",
+            textAlign: "center",
+          }}
+        >
+          Xác nhận đặt hàng
+        </TextComponent>
+      </Pressable>
       {orderStatus === "loading" || branchesLoading ? (
         <LoadingComponent
           loadingText="Đang xử lý..."
@@ -431,19 +422,14 @@ const CheckoutScreen = () => {
           }}
         />
       ) : null}
-      <ToastComponent
-        message={toast.message}
-        type={toast.type}
-        visible={toast.visible}
-        onHide={hideToast}
-        duration={3000}
-      />
       <ModalComponent
         visible={branchModalVisible}
         title="Chọn chi nhánh"
         onClose={() => setBranchModalVisible(false)}
         titleStyle={{
           color: isDarkMode ? Colors.textDarkPrimary : Colors.primary,
+          fontSize: 20,
+          fontWeight: "700",
         }}
       >
         {branchesError ? (
@@ -467,37 +453,27 @@ const CheckoutScreen = () => {
             contentContainerStyle={styles.branchScrollContent}
           >
             {branches.map((item) => (
-              <View
+              <Pressable
                 key={item.id.toString()}
-                style={styles.branchOptionContainer}
+                onPress={() => handleSelectBranch(item.id)}
+                style={({ pressed }) => [
+                  styles.branchOptionContainer,
+                  {
+                    backgroundColor:
+                      branchId === item.id
+                        ? isDarkMode
+                          ? Colors.primary
+                          : Colors.accent
+                        : isDarkMode
+                        ? Colors.crust
+                        : Colors.white,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  },
+                ]}
               >
-                <ButtonComponent
-                  title={item.name}
-                  type={branchId === item.id ? "primary" : "outline"}
-                  onPress={() => handleSelectBranch(item.id)}
-                  style={[
-                    styles.branchOption,
-                    {
-                      borderColor:
-                        branchId === item.id
-                          ? Colors.primary
-                          : isDarkMode
-                          ? Colors.primary
-                          : Colors.accent,
-                      backgroundColor:
-                        branchId === item.id
-                          ? Colors.primary
-                          : isDarkMode
-                          ? Colors.crust
-                          : Colors.white,
-                      shadowColor: Colors.black,
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 4,
-                      elevation: 3,
-                    },
-                  ]}
-                  textStyle={{
+                <TextComponent
+                  type="body"
+                  style={{
                     color:
                       branchId === item.id
                         ? Colors.white
@@ -505,9 +481,12 @@ const CheckoutScreen = () => {
                         ? Colors.textDarkPrimary
                         : Colors.textLightPrimary,
                     fontWeight: branchId === item.id ? "700" : "500",
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
                   }}
-                  accessibilityLabel={`Chọn chi nhánh ${item.name}`}
-                />
+                >
+                  {item.name}
+                </TextComponent>
                 {item.address && (
                   <TextComponent
                     type="caption"
@@ -538,9 +517,9 @@ const CheckoutScreen = () => {
                     {item.phone}
                   </TextComponent>
                 )}
-              </View>
+              </Pressable>
             ))}
-            <SpaceComponent size={16} />
+            <SpaceComponent size={20} />
           </ScrollView>
         )}
         <ButtonComponent
@@ -550,13 +529,8 @@ const CheckoutScreen = () => {
           style={[
             styles.closeButton,
             {
-              borderColor: isDarkMode ? Colors.primary : Colors.accent,
+              borderColor: isDarkMode ? Colors.accent : Colors.primary,
               backgroundColor: isDarkMode ? Colors.crust : Colors.white,
-              shadowColor: Colors.black,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 3,
             },
           ]}
           textStyle={{
@@ -572,22 +546,22 @@ const CheckoutScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   sectionCard: {
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   summaryText: {
     fontSize: 16,
@@ -595,72 +569,100 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: "center",
-    marginVertical: 16,
+    fontSize: 18,
+    marginVertical: 20,
   },
   errorText: {
     textAlign: "center",
-    marginVertical: 16,
+    fontSize: 16,
+    marginVertical: 20,
   },
   backButton: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 12,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 5,
   },
   input: {
-    marginBottom: 12,
+    marginBottom: 16,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    fontSize: 16,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   branchButton: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   paymentMethods: {
     flexWrap: "wrap",
-    gap: 10,
+    gap: 12,
   },
   paymentButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginRight: 8,
-    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 10,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   confirmButton: {
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 12,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
   },
   branchScrollView: {
-    maxHeight: 300,
+    maxHeight: 320,
   },
   branchScrollContent: {
-    paddingBottom: 16,
+    paddingVertical: 8,
   },
   branchOptionContainer: {
-    marginVertical: 4,
-  },
-  branchOption: {
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
+    marginVertical: 6,
+    borderRadius: 12,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   branchDetail: {
-    marginTop: 4,
+    marginBottom: 8,
     marginLeft: 16,
+    marginRight: 16,
   },
   closeButton: {
-    paddingVertical: 14,
-    marginTop: 8,
+    paddingVertical: 16,
+    marginTop: 12,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
 

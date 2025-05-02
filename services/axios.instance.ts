@@ -2,15 +2,13 @@
 import axios from "axios";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { handleApiError } from "@/utils/errorHandler";
+import { handleApiError } from "@/utils/error.handler";
 
 const backendUrl =
-  Platform.OS === "ios"
-    ? process.env.EXPO_PUBLIC_API_URL
-    : process.env.EXPO_PUBLIC_ANDROID_URL;
+  Platform.OS === "ios" ? "http://172.20.10.3:9990" : "http://172.20.10.3:9990";
 
 const instance = axios.create({
-  baseURL: backendUrl,
+  baseURL: "http://192.168.1.6:9990",
   timeout: 20000,
   headers: {
     "Content-Type": "application/json",
@@ -36,7 +34,7 @@ instance.interceptors.request.use(
 
 instance.interceptors.response.use(
   (response) => {
-    if (response.data) return response.data; // IBackendResponse<T>
+    if (response.data) return response.data;
     return response;
   },
   async (error) => {

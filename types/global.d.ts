@@ -36,7 +36,7 @@ declare global {
     name: string;
     address: string;
     phone: string;
-    isActive: boolean;
+    active: boolean;
     operatingHours: string;
   }
 
@@ -76,20 +76,21 @@ declare global {
 
   interface IOrderItem {
     id: number;
-    item: IMenuItem;
+    menuItem: IMenuItem;
     quantity: number;
     pricePerUnit: number;
     totalPrice: number;
     options: IOrderOption[];
   }
 
-  interface IOrderSummary {
+  interface IOrderInfo {
     id: number;
-    userInfo: IUserInfo;
     orderCode: string;
-    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELED";
+    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELLED";
     totalPrice: number;
-    branchName: string;
+    shippingAddress: string;
+    paymentMethod: "COD" | "VNPAY" | "MOMO" | "BANK_TRANSFER" | "CREDIT_CARD";
+    shipmentInfo: IShipmentInfo;
     createdAt: string;
     updatedAt: string;
   }
@@ -111,24 +112,40 @@ declare global {
   interface IPaymentInfo {
     id: number;
     paymentMethod: string;
-    paymentStatus: string;
+    status: string;
     transactionCode: string;
     paidAt: string;
     amount: number;
   }
   interface IShipmentTrackingEvent {
     id: number;
-    deliveryStatus: string;
+    deliveryStatus:
+      | "PREPARING"
+      | "OUT_FOR_DELIVERY"
+      | "DELIVERED"
+      | "FAILED_ATTEMPT"
+      | "ASSIGNED_SHIPPER"
+      | "PICKED_UP";
     note: string;
     eventTime: string;
     locationLatitude: number;
     locationLongitude: number;
   }
 
+  interface IShipmentDetail {
+    id: number;
+    deliveryStatus: string;
+    trackingEvents: IShipmentTrackingEvent[];
+    createdAt: string;
+    updatedAt: string;
+  }
+
   interface IShipmentInfo {
     id: number;
     deliveryStatus: string;
-    trackingHistory: IShipmentTrackingEvent[];
+
+    createdAt: string;
+    updatedAt: string;
   }
 
   interface IOrderDetail {
@@ -136,17 +153,17 @@ declare global {
     orderCode: string;
     totalPrice: number;
     orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELED";
-    createdAt: string;
-    updatedAt: string;
     note: string;
     shippingAddress: string;
     paymentMethod: string;
-    userInfo: IUserInfo;
-    branchInfo: IBranchInfo;
+    user: IUserInfo;
+    branch: IBranchInfo;
     items: IOrderItem[];
-    paymentInfo?: IPaymentInfo[];
-    pointsEarnedOrSpent?: number;
-    loyaltyTransactionDescription?: string;
+    payments: IPaymentInfo[];
+    shipment: IShipmentDetail;
+
+    createdAt: string;
+    updatedAt: string;
   }
 
   interface IOrderInfo {

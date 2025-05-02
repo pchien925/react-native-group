@@ -70,7 +70,7 @@ const RegisterScreen: React.FC = () => {
           type: "success",
           visible: true,
         });
-        setTimeout(() => router.replace("login"), 2000);
+        setTimeout(() => router.replace("/(auth)/login"), 2000);
       }
     } else {
       setToast({
@@ -301,7 +301,7 @@ const RegisterScreen: React.FC = () => {
             type="text"
             title="Đã có tài khoản? Đăng nhập"
             textStyle={styles.link}
-            onPress={() => router.replace("login")}
+            onPress={() => router.replace("/(auth)/login")}
           />
         </RowComponent>
 
