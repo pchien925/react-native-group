@@ -1,6 +1,5 @@
 import { View, Text } from "react-native";
 import React, { useEffect } from "react";
-import ButtonComponent from "@/components/common/ButtonComponent";
 import { useRouter } from "expo-router";
 
 const Index = () => {

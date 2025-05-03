@@ -14,7 +14,6 @@ import { useAppDispatch, useAppSelector } from "@/store/store";
 import { login, getCurrentUser } from "@/store/slices/authSlice";
 import { fetchCart } from "@/store/slices/cartSlice";
 import { fetchNotifications } from "@/store/slices/notificationSlice";
-import WebSocketService from "@/services/web.socket.service";
 import { router } from "expo-router";
 
 const LoginScreen: React.FC = () => {
@@ -55,42 +54,6 @@ const LoginScreen: React.FC = () => {
         await dispatch(
           fetchNotifications({ userId: loginResult.userId, page: 1, size: 10 })
         ).unwrap();
-      }
-      // Kết nối WebSocket
-      if (user?.email && accessToken) {
-        WebSocketService.connect(
-          "ws://192.168.1.6:9990/ws", // Thay bằng URL backend của bạn
-          user.email,
-          accessToken,
-          (notification) => {
-            // Thêm thông báo mới vào Redux
-            dispatch({
-              type: "notifications/addNotification",
-              payload: {
-                ...notification,
-                id: Date.now(),
-                createdAt: new Date().toISOString(),
-                userId: loginResult.userId,
-                isRead: false,
-              },
-            });
-          },
-          () => console.log("Kết nối WebSocket thành công"),
-          (err) => {
-            console.error("Lỗi WebSocket:", err);
-            setToast({
-              message: "Không thể kết nối WebSocket",
-              type: "error",
-              visible: true,
-            });
-          }
-        );
-      } else {
-        setToast({
-          message: "Không tìm thấy email hoặc token để kết nối WebSocket",
-          type: "error",
-          visible: true,
-        });
       }
 
       setToast({
