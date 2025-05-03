@@ -1,4 +1,3 @@
-// components/cart/CartItemComponent.tsx
 import React from "react";
 import {
   View,
@@ -45,7 +44,7 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item, style }) => {
         updateQuantity({ cartItemId: item.id, quantity: item.quantity - 1 })
       );
     } else {
-      setShowConfirm(true); // Hiển thị modal xác nhận xóa khi quantity = 1
+      setShowConfirm(true);
     }
   };
 
@@ -90,7 +89,7 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item, style }) => {
           >
             {item.menuItem.name}
           </TextComponent>
-          {item.selectedOptions && item.selectedOptions.length > 0 ? (
+          {item.selectedOptions?.length ? (
             <View style={styles.optionsContainer}>
               {item.selectedOptions.map((opt) => (
                 <TextComponent
@@ -152,7 +151,6 @@ const CartItemComponent: React.FC<CartItemProps> = ({ item, style }) => {
             )
           }
           onDecrease={handleDecrease}
-          onRemove={handleRemove}
           style={styles.quantityContainer}
         />
       </View>

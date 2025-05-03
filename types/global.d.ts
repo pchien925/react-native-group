@@ -152,7 +152,7 @@ declare global {
     id: number;
     orderCode: string;
     totalPrice: number;
-    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELED";
+    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELLED";
     note: string;
     shippingAddress: string;
     paymentMethod: string;

@@ -12,7 +12,7 @@ import RowComponent from "@/components/common/RowComponent";
 import { Colors } from "@/constants/Colors";
 import { useSelector } from "react-redux";
 import { RootState, useAppDispatch } from "@/store/store";
-import { fetchCart } from "@/store/slices/cartSlice";
+import { fetchCart, resetCart } from "@/store/slices/cartSlice";
 import { router } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import Toast from "react-native-toast-message";
@@ -27,14 +27,13 @@ const CartScreen = () => {
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
 
   useEffect(() => {
-    if (status === "idle") {
-      dispatch(fetchCart());
-    }
-  }, [status, dispatch]);
+    dispatch(fetchCart());
+  }, [dispatch]);
 
   useEffect(() => {
     if (error) {
       if (error.includes("Current user not found")) {
+        dispatch(resetCart());
         router.replace("/login");
       } else {
         Toast.show({
@@ -44,7 +43,7 @@ const CartScreen = () => {
         });
       }
     }
-  }, [error]);
+  }, [error, dispatch]);
 
   const handleCheckout = () => {
     setShowCheckoutConfirm(true);
@@ -62,7 +61,7 @@ const CartScreen = () => {
         <EmptyCartComponent status="loading" dispatch={dispatch} />
       ) : status === "failed" ? (
         <EmptyCartComponent status="failed" error={error} dispatch={dispatch} />
-      ) : !cart || !cart.cartItems || cart.cartItems.length === 0 ? (
+      ) : !cart?.cartItems?.length ? (
         <EmptyCartComponent status="empty" dispatch={dispatch} />
       ) : (
         <>
@@ -98,8 +97,8 @@ const CartScreen = () => {
             marginBottom: 16,
           }}
         >
-          Bạn muốn thanh toán {cart?.cartItems.length} món với tổng số tiền{" "}
-          {cart?.totalPrice.toLocaleString("vi-VN")} VNĐ?
+          Bạn muốn thanh toán {cart?.cartItems?.length || 0} món với tổng số
+          tiền {cart?.totalPrice.toLocaleString("vi-VN")} VNĐ?
         </TextComponent>
         <RowComponent justifyContent="space-between">
           <ButtonComponent

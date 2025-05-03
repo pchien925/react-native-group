@@ -13,20 +13,20 @@ import { Colors } from "@/constants/Colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSelector } from "react-redux";
 import { RootState, useAppDispatch } from "@/store/store";
-import { createOrder, resetCart } from "@/store/slices/cartSlice";
-import { getAllBranchesApi } from "@/services/api";
+import { createOrderApi, getAllBranchesApi } from "@/services/api";
+import { resetCart } from "@/store/slices/cartSlice";
 import { router } from "expo-router";
 import Toast from "react-native-toast-message";
+import { Ionicons } from "@expo/vector-icons";
 
 const CheckoutScreen = () => {
   const dispatch = useAppDispatch();
   const { isDarkMode } = useTheme();
   const cart = useSelector((state: RootState) => state.cart.cart);
   const user = useSelector((state: RootState) => state.auth.user);
-  const orderStatus = useSelector((state: RootState) => state.cart.status);
-  const orderError = useSelector((state: RootState) => state.cart.error);
 
   const [shippingAddress, setShippingAddress] = useState("");
+  const [useDefaultAddress, setUseDefaultAddress] = useState(false);
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<
     "COD" | "VNPAY" | "MOMO" | "BANK_TRANSFER" | "CREDIT_CARD"
@@ -34,8 +34,9 @@ const CheckoutScreen = () => {
   const [branchId, setBranchId] = useState<number | null>(null);
   const [branches, setBranches] = useState<IBranch[]>([]);
   const [branchModalVisible, setBranchModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [branchesLoading, setBranchesLoading] = useState(false);
-  const [branchesError, setBranchesError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -48,19 +49,14 @@ const CheckoutScreen = () => {
             setBranchId(response.data[0].id);
           }
         } else {
-          setBranchesError("Không tìm thấy chi nhánh");
-          Toast.show({
-            type: "error",
-            text1: "Không tìm thấy chi nhánh",
-            visibilityTime: 3000,
-          });
+          setError("Không tìm thấy chi nhánh");
+          Toast.show({ type: "error", text1: "Không tìm thấy chi nhánh" });
         }
       } catch (error: any) {
-        setBranchesError(error.message || "Lỗi khi tải chi nhánh");
+        setError(error.message || "Lỗi khi tải chi nhánh");
         Toast.show({
           type: "error",
           text1: error.message || "Lỗi khi tải chi nhánh",
-          visibilityTime: 3000,
         });
       } finally {
         setBranchesLoading(false);
@@ -69,55 +65,51 @@ const CheckoutScreen = () => {
     fetchBranches();
   }, []);
 
+  useEffect(() => {
+    if (useDefaultAddress && user?.address) {
+      setShippingAddress(user.address);
+    } else if (!useDefaultAddress) {
+      setShippingAddress("");
+    }
+  }, [useDefaultAddress, user?.address]);
+
   const handleCheckout = async () => {
-    if (!cart || !user || !branchId) {
-      Toast.show({
-        type: "error",
-        text1: "Giỏ hàng, thông tin người dùng hoặc chi nhánh không hợp lệ",
-        visibilityTime: 3000,
-      });
+    if (!cart || !user || !branchId || !shippingAddress) {
+      Toast.show({ type: "error", text1: "Vui lòng nhập đầy đủ thông tin" });
       return;
     }
+
+    setIsLoading(true);
     try {
-      await dispatch(
-        createOrder({
-          cartId: cart.id,
-          shippingAddress,
-          note,
-          paymentMethod,
-          userId: user.id,
-          branchId,
-        })
-      ).unwrap();
-      Toast.show({
-        type: "success",
-        text1: "Đặt hàng thành công!",
-        visibilityTime: 3000,
-      });
-      dispatch(resetCart());
-      router.replace("/(tabs)/home");
+      const response = await createOrderApi(
+        user.id,
+        branchId,
+        shippingAddress,
+        note,
+        paymentMethod
+      );
+      if (response.data) {
+        Toast.show({ type: "success", text1: "Đặt hàng thành công!" });
+        dispatch(resetCart());
+        router.replace("/(tabs)/home");
+      } else {
+        throw new Error("Không thể tạo đơn hàng");
+      }
     } catch (error: any) {
-      Toast.show({
-        type: "error",
-        text1: error.message || "Lỗi khi đặt hàng",
-        visibilityTime: 3000,
-      });
+      setError(error.message || "Lỗi khi đặt hàng");
+      Toast.show({ type: "error", text1: error.message || "Lỗi khi đặt hàng" });
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (orderError) {
-      Toast.show({
-        type: "error",
-        text1: orderError,
-        visibilityTime: 3000,
-      });
-    }
-  }, [orderError]);
 
   const handleSelectBranch = (id: number) => {
     setBranchId(id);
     setBranchModalVisible(false);
+  };
+
+  const toggleDefaultAddress = () => {
+    setUseDefaultAddress(!useDefaultAddress);
   };
 
   const selectedBranch = branches.find((branch) => branch.id === branchId);
@@ -125,16 +117,7 @@ const CheckoutScreen = () => {
   if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
     return (
       <ContainerComponent style={styles.container}>
-        <CardComponent
-          style={[
-            styles.sectionCard,
-            {
-              backgroundColor: isDarkMode
-                ? Colors.backgroundDark
-                : Colors.backgroundLight,
-            },
-          ]}
-        >
+        <CardComponent style={isDarkMode ? styles.cardDark : styles.cardLight}>
           <TextComponent
             type="subheading"
             style={[
@@ -152,16 +135,8 @@ const CheckoutScreen = () => {
             title="Quay lại giỏ hàng"
             type="primary"
             onPress={() => router.push("/cart")}
-            style={[
-              styles.backButton,
-              {
-                backgroundColor: isDarkMode ? Colors.primary : Colors.accent,
-              },
-            ]}
-            textStyle={{
-              color: Colors.white,
-              fontWeight: "700",
-            }}
+            style={styles.backButton}
+            textStyle={{ color: Colors.backgroundLight, fontWeight: "600" }}
           />
         </CardComponent>
       </ContainerComponent>
@@ -180,60 +155,36 @@ const CheckoutScreen = () => {
         },
       ]}
     >
-      <SpaceComponent size={20} />
-      <CardComponent
-        style={[
-          styles.sectionCard,
-          {
-            backgroundColor: isDarkMode
-              ? Colors.surfaceDark
-              : Colors.surfaceLight,
-          },
-        ]}
-      >
+      <SpaceComponent size={16} />
+      <CardComponent style={isDarkMode ? styles.cardDark : styles.cardLight}>
         <TextComponent
           type="subheading"
           style={[
             styles.sectionTitle,
             {
-              color: isDarkMode ? Colors.textDarkPrimary : Colors.primary,
+              color: isDarkMode
+                ? Colors.textDarkPrimary
+                : Colors.textLightPrimary,
             },
           ]}
         >
           Tổng quan đơn hàng
         </TextComponent>
-        <TextComponent
-          type="body"
-          style={[
-            styles.summaryText,
-            {
-              color: isDarkMode
-                ? Colors.textDarkSecondary
-                : Colors.textLightPrimary,
-            },
-          ]}
-        >
+        <TextComponent type="body" style={[styles.summaryText]}>
           Tổng cộng: {cart.totalPrice.toLocaleString("vi-VN")} VNĐ (
           {cart.cartItems.length} món)
         </TextComponent>
       </CardComponent>
-      <SpaceComponent size={20} />
-      <CardComponent
-        style={[
-          styles.sectionCard,
-          {
-            backgroundColor: isDarkMode
-              ? Colors.surfaceDark
-              : Colors.surfaceLight,
-          },
-        ]}
-      >
+      <SpaceComponent size={16} />
+      <CardComponent style={isDarkMode ? styles.cardDark : styles.cardLight}>
         <TextComponent
           type="subheading"
           style={[
             styles.sectionTitle,
             {
-              color: isDarkMode ? Colors.textDarkPrimary : Colors.primary,
+              color: isDarkMode
+                ? Colors.textDarkPrimary
+                : Colors.textLightPrimary,
             },
           ]}
         >
@@ -243,44 +194,56 @@ const CheckoutScreen = () => {
           title={selectedBranch ? selectedBranch.name : "Chọn chi nhánh"}
           type="outline"
           onPress={() => setBranchModalVisible(true)}
-          style={[
-            styles.branchButton,
-            {
-              borderColor: isDarkMode ? Colors.accent : Colors.primary,
-              backgroundColor: isDarkMode ? Colors.crust : Colors.white,
-            },
-          ]}
+          style={[styles.branchButton, { borderColor: Colors.secondary }]}
           textStyle={{
             color: isDarkMode
               ? Colors.textDarkPrimary
               : Colors.textLightPrimary,
-            fontWeight: "600",
+            fontWeight: "500",
           }}
           accessibilityLabel="Chọn chi nhánh giao hàng"
         />
       </CardComponent>
-      <SpaceComponent size={20} />
-      <CardComponent
-        style={[
-          styles.sectionCard,
-          {
-            backgroundColor: isDarkMode
-              ? Colors.surfaceDark
-              : Colors.surfaceLight,
-          },
-        ]}
-      >
+      <SpaceComponent size={16} />
+      <CardComponent style={isDarkMode ? styles.cardDark : styles.cardLight}>
         <TextComponent
           type="subheading"
           style={[
             styles.sectionTitle,
             {
-              color: isDarkMode ? Colors.textDarkPrimary : Colors.primary,
+              color: isDarkMode
+                ? Colors.textDarkPrimary
+                : Colors.textLightPrimary,
             },
           ]}
         >
           Thông tin giao hàng
         </TextComponent>
+        {user?.address && (
+          <Pressable
+            onPress={toggleDefaultAddress}
+            style={styles.defaultAddressContainer}
+          >
+            <Ionicons
+              name={useDefaultAddress ? "checkbox" : "square-outline"}
+              size={20}
+              color={Colors.accent}
+            />
+            <TextComponent
+              type="body"
+              style={[
+                styles.defaultAddressText,
+                {
+                  color: isDarkMode
+                    ? Colors.textDarkPrimary
+                    : Colors.textLightPrimary,
+                },
+              ]}
+            >
+              Sử dụng địa chỉ mặc định: {user.address}
+            </TextComponent>
+          </Pressable>
+        )}
         <InputComponent
           placeholder="Địa chỉ giao hàng"
           value={shippingAddress}
@@ -288,14 +251,15 @@ const CheckoutScreen = () => {
           style={[
             styles.input,
             {
-              borderColor: isDarkMode ? Colors.accent : Colors.primary,
-              backgroundColor: isDarkMode ? Colors.crust : Colors.white,
+              borderColor: Colors.secondary,
+              backgroundColor: Colors.backgroundLight,
             },
           ]}
           placeholderTextColor={
             isDarkMode ? Colors.textDarkSecondary : Colors.textLightSecondary
           }
           accessibilityLabel="Nhập địa chỉ giao hàng"
+          editable={!useDefaultAddress}
         />
         <InputComponent
           placeholder="Ghi chú (tùy chọn)"
@@ -304,8 +268,8 @@ const CheckoutScreen = () => {
           style={[
             styles.input,
             {
-              borderColor: isDarkMode ? Colors.accent : Colors.primary,
-              backgroundColor: isDarkMode ? Colors.crust : Colors.white,
+              borderColor: Colors.secondary,
+              backgroundColor: Colors.backgroundLight,
             },
           ]}
           multiline
@@ -316,23 +280,16 @@ const CheckoutScreen = () => {
           accessibilityLabel="Nhập ghi chú cho đơn hàng"
         />
       </CardComponent>
-      <SpaceComponent size={20} />
-      <CardComponent
-        style={[
-          styles.sectionCard,
-          {
-            backgroundColor: isDarkMode
-              ? Colors.surfaceDark
-              : Colors.surfaceLight,
-          },
-        ]}
-      >
+      <SpaceComponent size={16} />
+      <CardComponent style={isDarkMode ? styles.cardDark : styles.cardLight}>
         <TextComponent
           type="subheading"
           style={[
             styles.sectionTitle,
             {
-              color: isDarkMode ? Colors.textDarkPrimary : Colors.primary,
+              color: isDarkMode
+                ? Colors.textDarkPrimary
+                : Colors.textLightPrimary,
             },
           ]}
         >
@@ -350,18 +307,12 @@ const CheckoutScreen = () => {
                     borderColor:
                       paymentMethod === method
                         ? Colors.accent
-                        : isDarkMode
-                        ? Colors.primary
-                        : Colors.borderLight,
+                        : Colors.secondary,
                     backgroundColor:
                       paymentMethod === method
-                        ? isDarkMode
-                          ? Colors.primary
-                          : Colors.accent
-                        : isDarkMode
-                        ? Colors.crust
-                        : Colors.white,
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                        ? Colors.accent
+                        : Colors.backgroundLight,
+                    opacity: pressed ? 0.7 : 1,
                   },
                 ]}
               >
@@ -370,11 +321,11 @@ const CheckoutScreen = () => {
                   style={{
                     color:
                       paymentMethod === method
-                        ? Colors.white
+                        ? Colors.backgroundLight
                         : isDarkMode
                         ? Colors.textDarkPrimary
                         : Colors.textLightPrimary,
-                    fontWeight: paymentMethod === method ? "700" : "500",
+                    fontWeight: paymentMethod === method ? "600" : "500",
                   }}
                 >
                   {method}
@@ -384,21 +335,17 @@ const CheckoutScreen = () => {
           )}
         </RowComponent>
       </CardComponent>
-      <SpaceComponent size={20} />
+      <SpaceComponent size={16} />
       <Pressable
         onPress={handleCheckout}
-        disabled={orderStatus === "loading" || !shippingAddress || !branchId}
-        style={({ pressed }) => [
+        disabled={isLoading || !shippingAddress || !branchId}
+        style={[
           styles.confirmButton,
           {
-            backgroundColor: isDarkMode ? Colors.primary : Colors.accent,
-            opacity:
-              orderStatus === "loading" || !shippingAddress || !branchId
-                ? 0.6
-                : pressed
-                ? 0.8
-                : 1,
-            transform: [{ scale: pressed ? 0.98 : 1 }],
+            backgroundColor:
+              isLoading || !shippingAddress || !branchId
+                ? Colors.disabled
+                : Colors.primary,
           },
         ]}
         accessibilityLabel="Xác nhận đặt hàng"
@@ -406,38 +353,38 @@ const CheckoutScreen = () => {
         <TextComponent
           type="subheading"
           style={{
-            color: Colors.white,
-            fontWeight: "700",
+            color: Colors.backgroundLight,
+            fontWeight: "600",
             textAlign: "center",
           }}
         >
           Xác nhận đặt hàng
         </TextComponent>
       </Pressable>
-      {orderStatus === "loading" || branchesLoading ? (
+      <SpaceComponent size={16} />
+      {isLoading || branchesLoading ? (
         <LoadingComponent
           loadingText="Đang xử lý..."
-          textStyle={{
-            color: isDarkMode ? Colors.textDarkPrimary : Colors.primary,
-          }}
+          textStyle={{ color: Colors.primary }}
         />
       ) : null}
       <ModalComponent
         visible={branchModalVisible}
         title="Chọn chi nhánh"
         onClose={() => setBranchModalVisible(false)}
+        style={isDarkMode ? styles.modalDark : styles.modalLight}
         titleStyle={{
-          color: isDarkMode ? Colors.textDarkPrimary : Colors.primary,
+          color: isDarkMode ? Colors.textDarkPrimary : Colors.textLightPrimary,
           fontSize: 20,
           fontWeight: "700",
         }}
       >
-        {branchesError ? (
+        {error ? (
           <TextComponent
             type="body"
             style={[styles.errorText, { color: Colors.error }]}
           >
-            {branchesError}
+            {error}
           </TextComponent>
         ) : branches.length === 0 ? (
           <TextComponent
@@ -461,13 +408,17 @@ const CheckoutScreen = () => {
                   {
                     backgroundColor:
                       branchId === item.id
-                        ? isDarkMode
-                          ? Colors.primary
-                          : Colors.accent
-                        : isDarkMode
-                        ? Colors.crust
-                        : Colors.white,
-                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                        ? Colors.accent
+                        : Colors.backgroundLight,
+                    elevation: branchId === item.id ? 6 : 3,
+                    shadowColor: Colors.black,
+                    shadowOffset: {
+                      width: 0,
+                      height: branchId === item.id ? 4 : 2,
+                    },
+                    shadowOpacity: branchId === item.id ? 0.25 : 0.15,
+                    shadowRadius: branchId === item.id ? 6 : 4,
+                    opacity: pressed ? 0.7 : 1,
                   },
                 ]}
               >
@@ -476,11 +427,12 @@ const CheckoutScreen = () => {
                   style={{
                     color:
                       branchId === item.id
-                        ? Colors.white
+                        ? Colors.backgroundLight
                         : isDarkMode
                         ? Colors.textDarkPrimary
                         : Colors.textLightPrimary,
                     fontWeight: branchId === item.id ? "700" : "500",
+                    fontSize: 16,
                     paddingVertical: 12,
                     paddingHorizontal: 16,
                   }}
@@ -519,7 +471,7 @@ const CheckoutScreen = () => {
                 )}
               </Pressable>
             ))}
-            <SpaceComponent size={20} />
+            <SpaceComponent size={16} />
           </ScrollView>
         )}
         <ButtonComponent
@@ -529,13 +481,18 @@ const CheckoutScreen = () => {
           style={[
             styles.closeButton,
             {
-              borderColor: isDarkMode ? Colors.accent : Colors.primary,
-              backgroundColor: isDarkMode ? Colors.crust : Colors.white,
+              borderColor: Colors.secondary,
+              backgroundColor: isDarkMode
+                ? Colors.surfaceDark
+                : Colors.backgroundLight,
             },
           ]}
           textStyle={{
-            color: isDarkMode ? Colors.textDarkPrimary : Colors.primary,
+            color: isDarkMode
+              ? Colors.textDarkPrimary
+              : Colors.textLightPrimary,
             fontWeight: "600",
+            fontSize: 16,
           }}
           accessibilityLabel="Đóng danh sách chi nhánh"
         />
@@ -546,123 +503,144 @@ const CheckoutScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  sectionCard: {
-    padding: 20,
-    borderRadius: 16,
+  cardLight: {
+    backgroundColor: Colors.backgroundLight,
+    padding: 16,
+    borderRadius: 12,
+    elevation: 5,
     shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowRadius: 8,
+  },
+  cardDark: {
+    backgroundColor: Colors.surfaceDark,
+    padding: 16,
+    borderRadius: 12,
+    elevation: 5,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  modalLight: {
+    backgroundColor: Colors.backgroundLight,
+    borderRadius: 16,
+    elevation: 6,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  modalDark: {
+    backgroundColor: Colors.surfaceDark,
+    borderRadius: 16,
+    elevation: 6,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "600",
     marginBottom: 12,
   },
   summaryText: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
+    color: Colors.primary,
   },
   emptyText: {
     textAlign: "center",
-    fontSize: 18,
-    marginVertical: 20,
+    fontSize: 16,
+    marginVertical: 16,
   },
   errorText: {
     textAlign: "center",
-    fontSize: 16,
-    marginVertical: 20,
+    fontSize: 14,
+    marginVertical: 16,
+  },
+  defaultAddressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 8,
+  },
+  defaultAddressText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
   backButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    elevation: 3,
     shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   input: {
-    marginBottom: 16,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 1.5,
-    fontSize: 16,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 12,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    fontSize: 14,
+    backgroundColor: Colors.backgroundLight,
   },
   branchButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: Colors.backgroundLight,
   },
   paymentMethods: {
     flexWrap: "wrap",
-    gap: 12,
+    gap: 8,
   },
   paymentButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: Colors.backgroundLight,
   },
   confirmButton: {
-    paddingVertical: 18,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 8,
+    elevation: 4,
     shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
     shadowRadius: 6,
-    elevation: 6,
   },
   branchScrollView: {
-    maxHeight: 320,
+    maxHeight: 300,
   },
   branchScrollContent: {
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   branchOptionContainer: {
     marginVertical: 6,
-    borderRadius: 12,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 10,
+    padding: 8,
   },
   branchDetail: {
     marginBottom: 8,
-    marginLeft: 16,
-    marginRight: 16,
+    marginHorizontal: 16,
+    fontSize: 12,
   },
   closeButton: {
-    paddingVertical: 16,
+    paddingVertical: 12,
     marginTop: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 8,
+    borderWidth: 1,
   },
 });
 

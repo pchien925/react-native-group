@@ -1,4 +1,3 @@
-// components/cart/EmptyCartComponent.tsx
 import React from "react";
 import { View, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import TextComponent from "@/components/common/TextComponent";
@@ -38,7 +37,7 @@ const EmptyCartComponent: React.FC<EmptyCartProps> = ({
       case "failed":
         return {
           icon: "alert-circle-outline" as const,
-          text: `Lỗi: ${error || "Không thể tải giỏ hàng"}`,
+          text: error || "Không thể tải giỏ hàng",
           subText: "Vui lòng thử lại.",
         };
       case "empty":

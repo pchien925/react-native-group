@@ -1,4 +1,3 @@
-// components/cart/QuantityControlComponent.tsx
 import React from "react";
 import { Pressable, View, StyleProp, ViewStyle } from "react-native";
 import TextComponent from "../common/TextComponent";
@@ -12,7 +11,6 @@ interface QuantityControlProps {
   quantity: number;
   onIncrease: () => void;
   onDecrease: () => void;
-  onRemove?: () => void;
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
 }
@@ -21,23 +19,12 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
   quantity,
   onIncrease,
   onDecrease,
-  onRemove,
   style,
   disabled = false,
 }) => {
   const { isDarkMode } = useTheme();
   const cartStatus = useSelector((state: RootState) => state.cart.status);
-  const isDecreaseDisabled =
-    quantity <= 1 || disabled || cartStatus === "loading";
-  const isIncreaseDisabled = disabled || cartStatus === "loading";
-
-  const handleDecrease = () => {
-    if (quantity === 1 && onRemove) {
-      onRemove();
-    } else {
-      onDecrease();
-    }
-  };
+  const isDisabled = disabled || cartStatus === "loading";
 
   return (
     <View
@@ -57,17 +44,17 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
         style={({ pressed }) => [
           globalStyles.quantityButton,
           {
-            backgroundColor: isDecreaseDisabled
+            backgroundColor: isDisabled
               ? Colors.disabled
               : isDarkMode
               ? Colors.surfaceDark
               : Colors.white,
             borderColor: isDarkMode ? Colors.borderDark : Colors.borderLight,
-            opacity: pressed && !isDecreaseDisabled ? 0.7 : 1,
+            opacity: pressed && !isDisabled ? 0.7 : 1,
           },
         ]}
-        onPress={handleDecrease}
-        disabled={isDecreaseDisabled}
+        onPress={onDecrease}
+        disabled={isDisabled}
         accessibilityLabel="Giảm số lượng"
         accessibilityRole="button"
       >
@@ -75,7 +62,7 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
           style={[
             globalStyles.quantityButtonText,
             {
-              color: isDecreaseDisabled
+              color: isDisabled
                 ? Colors.textLightSecondary
                 : isDarkMode
                 ? Colors.textDarkPrimary
@@ -103,17 +90,17 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
         style={({ pressed }) => [
           globalStyles.quantityButton,
           {
-            backgroundColor: isIncreaseDisabled
+            backgroundColor: isDisabled
               ? Colors.disabled
               : isDarkMode
               ? Colors.surfaceDark
               : Colors.white,
             borderColor: isDarkMode ? Colors.borderDark : Colors.borderLight,
-            opacity: pressed && !isIncreaseDisabled ? 0.7 : 1,
+            opacity: pressed && !isDisabled ? 0.7 : 1,
           },
         ]}
         onPress={onIncrease}
-        disabled={isIncreaseDisabled}
+        disabled={isDisabled}
         accessibilityLabel="Tăng số lượng"
         accessibilityRole="button"
       >
@@ -121,7 +108,7 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
           style={[
             globalStyles.quantityButtonText,
             {
-              color: isIncreaseDisabled
+              color: isDisabled
                 ? Colors.textLightSecondary
                 : isDarkMode
                 ? Colors.textDarkPrimary
@@ -136,4 +123,4 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
   );
 };
 
-export default QuantityControl;
+export default React.memo(QuantityControl);

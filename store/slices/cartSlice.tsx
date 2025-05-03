@@ -2,10 +2,10 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   getCartApi,
-  createOrderApi,
-  updateQuantityApi,
-  removeItemFromCartApi,
   addItemToCartApi,
+  updateItemQuantityApi,
+  removeItemFromCartApi,
+  clearCartApi,
 } from "@/services/api";
 import { router } from "expo-router";
 
@@ -21,20 +21,25 @@ const initialState: CartState = {
   error: null,
 };
 
+// Helper function to format error message
+const formatErrorMessage = (
+  error: string | string[] | undefined,
+  defaultMessage: string
+): string => {
+  if (Array.isArray(error)) return error.join(", ");
+  return error || defaultMessage;
+};
+
 // Async thunk để lấy giỏ hàng
 export const fetchCart = createAsyncThunk(
   "cart/fetchCart",
   async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState() as { auth: { accessToken: string | null } };
-      const accessToken = state.auth.accessToken;
-      if (!accessToken) {
-        throw new Error("No access token available");
-      }
-      const response: IBackendResponse<ICart> = await getCartApi();
+      if (!state.auth.accessToken) throw new Error("No access token");
+      const response = await getCartApi();
       if (response.error || !response.data) {
         if (
-          response.error &&
           typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
@@ -42,14 +47,10 @@ export const fetchCart = createAsyncThunk(
           router.replace("/login");
         }
         throw new Error(
-          typeof response.error === "string"
-            ? response.error
-            : Array.isArray(response.error)
-            ? response.error.join(", ")
-            : response.message || "Failed to fetch cart"
+          formatErrorMessage(response.error, "Failed to fetch cart")
         );
       }
-      return response.data; // ICart
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to fetch cart");
     }
@@ -69,18 +70,10 @@ export const addToCart = createAsyncThunk(
   ) => {
     try {
       const state = getState() as { auth: { accessToken: string | null } };
-      const accessToken = state.auth.accessToken;
-      if (!accessToken) {
-        throw new Error("No access token available");
-      }
-      const response: IBackendResponse<ICart> = await addItemToCartApi(
-        menuItemId,
-        quantity,
-        options
-      );
+      if (!state.auth.accessToken) throw new Error("No access token");
+      const response = await addItemToCartApi(menuItemId, quantity, options);
       if (response.error || !response.data) {
         if (
-          response.error &&
           typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
@@ -88,14 +81,10 @@ export const addToCart = createAsyncThunk(
           router.replace("/login");
         }
         throw new Error(
-          typeof response.error === "string"
-            ? response.error
-            : Array.isArray(response.error)
-            ? response.error.join(", ")
-            : response.message || "Failed to add item to cart"
+          formatErrorMessage(response.error, "Failed to add item to cart")
         );
       }
-      return response.data; // ICart
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to add item to cart");
     }
@@ -111,17 +100,10 @@ export const updateQuantity = createAsyncThunk(
   ) => {
     try {
       const state = getState() as { auth: { accessToken: string | null } };
-      const accessToken = state.auth.accessToken;
-      if (!accessToken) {
-        throw new Error("No access token available");
-      }
-      const response: IBackendResponse<ICart> = await updateQuantityApi(
-        cartItemId,
-        quantity
-      );
+      if (!state.auth.accessToken) throw new Error("No access token");
+      const response = await updateItemQuantityApi(cartItemId, quantity);
       if (response.error || !response.data) {
         if (
-          response.error &&
           typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
@@ -129,14 +111,10 @@ export const updateQuantity = createAsyncThunk(
           router.replace("/login");
         }
         throw new Error(
-          typeof response.error === "string"
-            ? response.error
-            : Array.isArray(response.error)
-            ? response.error.join(", ")
-            : response.message || "Failed to update quantity"
+          formatErrorMessage(response.error, "Failed to update quantity")
         );
       }
-      return response.data; // ICart
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to update quantity");
     }
@@ -149,16 +127,10 @@ export const removeFromCart = createAsyncThunk(
   async (cartItemId: number, { getState, rejectWithValue }) => {
     try {
       const state = getState() as { auth: { accessToken: string | null } };
-      const accessToken = state.auth.accessToken;
-      if (!accessToken) {
-        throw new Error("No access token available");
-      }
-      const response: IBackendResponse<ICart> = await removeItemFromCartApi(
-        cartItemId
-      );
+      if (!state.auth.accessToken) throw new Error("No access token");
+      const response = await removeItemFromCartApi(cartItemId);
       if (response.error || !response.data) {
         if (
-          response.error &&
           typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
@@ -166,50 +138,26 @@ export const removeFromCart = createAsyncThunk(
           router.replace("/login");
         }
         throw new Error(
-          typeof response.error === "string"
-            ? response.error
-            : Array.isArray(response.error)
-            ? response.error.join(", ")
-            : response.message || "Failed to remove item"
+          formatErrorMessage(response.error, "Failed to remove item")
         );
       }
-      return response.data; // ICart
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to remove item");
     }
   }
 );
 
-// Async thunk để tạo đơn hàng
-export const createOrder = createAsyncThunk(
-  "cart/createOrder",
-  async (
-    orderData: {
-      cartId: number;
-      shippingAddress: string;
-      note: string;
-      paymentMethod: "COD" | "VNPAY" | "MOMO" | "BANK_TRANSFER" | "CREDIT_CARD";
-      userId: number;
-      branchId: number;
-    },
-    { getState, rejectWithValue }
-  ) => {
+// Async thunk để xóa toàn bộ giỏ hàng
+export const clearCart = createAsyncThunk(
+  "cart/clearCart",
+  async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState() as { auth: { accessToken: string | null } };
-      const accessToken = state.auth.accessToken;
-      if (!accessToken) {
-        throw new Error("No access token available");
-      }
-      const response: IBackendResponse<IOrderInfo> = await createOrderApi(
-        orderData.userId,
-        orderData.branchId,
-        orderData.shippingAddress,
-        orderData.note,
-        orderData.paymentMethod
-      );
+      if (!state.auth.accessToken) throw new Error("No access token");
+      const response = await clearCartApi();
       if (response.error || !response.data) {
         if (
-          response.error &&
           typeof response.error === "string" &&
           response.error.includes("Current user not found")
         ) {
@@ -217,16 +165,12 @@ export const createOrder = createAsyncThunk(
           router.replace("/login");
         }
         throw new Error(
-          typeof response.error === "string"
-            ? response.error
-            : Array.isArray(response.error)
-            ? response.error.join(", ")
-            : response.message || "Failed to create order"
+          formatErrorMessage(response.error, "Failed to clear cart")
         );
       }
-      return response.data; // IOrderInfo
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to create order");
+      return rejectWithValue(error.message || "Failed to clear cart");
     }
   }
 );
@@ -240,6 +184,13 @@ const cartSlice = createSlice({
       state.status = "idle";
       state.error = null;
     },
+    sortCartItemsById: (state) => {
+      if (state.cart?.cartItems) {
+        state.cart.cartItems = [...state.cart.cartItems].sort(
+          (a, b) => a.id - b.id
+        );
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -249,7 +200,13 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload; // action.payload là ICart
+        state.cart = action.payload;
+        // Sắp xếp ngay sau khi fetch
+        if (state.cart?.cartItems) {
+          state.cart.cartItems = [...state.cart.cartItems].sort(
+            (a, b) => a.id - b.id
+          );
+        }
         state.error = null;
       })
       .addCase(fetchCart.rejected, (state, action) => {
@@ -262,7 +219,13 @@ const cartSlice = createSlice({
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload; // action.payload là ICart
+        state.cart = action.payload;
+        // Sắp xếp sau khi thêm
+        if (state.cart?.cartItems) {
+          state.cart.cartItems = [...state.cart.cartItems].sort(
+            (a, b) => a.id - b.id
+          );
+        }
         state.error = null;
       })
       .addCase(addToCart.rejected, (state, action) => {
@@ -275,7 +238,13 @@ const cartSlice = createSlice({
       })
       .addCase(updateQuantity.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload; // action.payload là ICart
+        state.cart = action.payload;
+        // Sắp xếp sau khi cập nhật số lượng
+        if (state.cart?.cartItems) {
+          state.cart.cartItems = [...state.cart.cartItems].sort(
+            (a, b) => a.id - b.id
+          );
+        }
         state.error = null;
       })
       .addCase(updateQuantity.rejected, (state, action) => {
@@ -288,28 +257,34 @@ const cartSlice = createSlice({
       })
       .addCase(removeFromCart.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.cart = action.payload; // action.payload là ICart
+        state.cart = action.payload;
+        // Sắp xếp sau khi xóa
+        if (state.cart?.cartItems) {
+          state.cart.cartItems = [...state.cart.cartItems].sort(
+            (a, b) => a.id - b.id
+          );
+        }
         state.error = null;
       })
       .addCase(removeFromCart.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       })
-      // Create Order
-      .addCase(createOrder.pending, (state) => {
+      // Clear Cart
+      .addCase(clearCart.pending, (state) => {
         state.status = "loading";
       })
-      .addCase(createOrder.fulfilled, (state) => {
+      .addCase(clearCart.fulfilled, (state) => {
         state.status = "succeeded";
-        state.cart = null; // Xóa giỏ hàng sau khi tạo đơn hàng
+        state.cart = null;
         state.error = null;
       })
-      .addCase(createOrder.rejected, (state, action) => {
+      .addCase(clearCart.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       });
   },
 });
 
-export const { resetCart } = cartSlice.actions;
+export const { resetCart, sortCartItemsById } = cartSlice.actions;
 export default cartSlice.reducer;

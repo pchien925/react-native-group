@@ -1,4 +1,3 @@
-// components/cart/CartSummaryComponent.tsx
 import React from "react";
 import { View, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import TextComponent from "@/components/common/TextComponent";
@@ -7,8 +6,6 @@ import RowComponent from "@/components/common/RowComponent";
 import { Colors } from "@/constants/Colors";
 import { globalStyles } from "@/styles/global.styles";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
 
 interface CartSummaryProps {
   totalPrice: number;
@@ -22,7 +19,6 @@ const CartSummaryComponent: React.FC<CartSummaryProps> = ({
   style,
 }) => {
   const { isDarkMode } = useTheme();
-  const cartStatus = useSelector((state: RootState) => state.cart.status);
 
   return (
     <View
@@ -51,7 +47,7 @@ const CartSummaryComponent: React.FC<CartSummaryProps> = ({
         type="primary"
         onPress={onCheckout}
         style={styles.checkoutButton}
-        disabled={cartStatus === "loading" || cartStatus === "failed"}
+        disabled={totalPrice <= 0} // Vô hiệu hóa nếu totalPrice không hợp lệ
         accessibilityLabel="Thanh toán giỏ hàng"
       />
     </View>

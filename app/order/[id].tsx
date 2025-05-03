@@ -131,7 +131,7 @@ const OrderDetailScreen: React.FC = () => {
         case "SHIPPING":
         case "PROCESSING":
           return "warning";
-        case "CANCELED":
+        case "CANCELLED":
           return "error";
         default:
           return "info";
@@ -226,7 +226,7 @@ const OrderDetailScreen: React.FC = () => {
                   },
                 ]}
               >
-                Giá cơ bản:{" "}
+                Giá cơ bản:
                 {(item.menuItem?.basePrice || 0).toLocaleString("vi-VN")} VNĐ
               </TextComponent>
               {item.options?.map((option) => (
@@ -359,7 +359,7 @@ const OrderDetailScreen: React.FC = () => {
                   },
                 ]}
               >
-                Ngày đặt:{" "}
+                Ngày đặt:
                 {new Date(orderDetail.createdAt).toLocaleDateString("vi-VN")}
               </TextComponent>
               <TagComponent
@@ -936,13 +936,7 @@ const OrderDetailScreen: React.FC = () => {
               >
                 Tổng cộng
               </TextComponent>
-              <TextComponent
-                type="subheading"
-                style={[
-                  styles.totalPrice,
-                  { color: isDarkMode ? Colors.accent : Colors.accent },
-                ]}
-              >
+              <TextComponent type="subheading" style={[styles.totalPrice]}>
                 {orderDetail.totalPrice.toLocaleString("vi-VN")} VNĐ
               </TextComponent>
             </RowComponent>
@@ -1125,6 +1119,7 @@ const styles = StyleSheet.create({
   totalPrice: {
     fontSize: 18,
     fontWeight: "700",
+    color: Colors.pepperoni,
   },
   actionButton: {
     flex: 1,

@@ -88,6 +88,7 @@ export const getCurrentUserApi = (): Promise<IBackendResponse<IUser>> => {
   return axios.get(url);
 };
 
+//cart
 export const getCartApi = (): Promise<IBackendResponse<ICart>> => {
   const url = `/api/v1/carts`;
   return axios.get(url);
@@ -107,7 +108,7 @@ export const addItemToCartApi = (
   return axios.post(url, data);
 };
 
-export const updateQuantityApi = (
+export const updateItemQuantityApi = (
   cartItemId: number,
   quantity: number
 ): Promise<IBackendResponse<ICart>> => {
@@ -120,6 +121,16 @@ export const removeItemFromCartApi = (
   cartItemId: number
 ): Promise<IBackendResponse<ICart>> => {
   const url = `/api/v1/carts/items/${cartItemId}`;
+  return axios.delete(url);
+};
+
+export const getCartItemsApi = (): Promise<IBackendResponse<ICartItem[]>> => {
+  const url = `/api/v1/carts/items`;
+  return axios.get(url);
+};
+
+export const clearCartApi = (): Promise<IBackendResponse<ICart>> => {
+  const url = `/api/v1/carts`;
   return axios.delete(url);
 };
 

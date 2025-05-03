@@ -212,7 +212,6 @@ const OrderScreen: React.FC = () => {
                   borderColor: isDarkMode
                     ? Colors.borderDark
                     : Colors.borderLight,
-                  opacity: pressed ? 0.7 : 1,
                 },
               ]}
             >
