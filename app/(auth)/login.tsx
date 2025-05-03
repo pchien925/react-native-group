@@ -1,4 +1,3 @@
-// screens/LoginScreen.tsx
 import React, { useState } from "react";
 import { StyleSheet, View, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,13 +10,17 @@ import ToastComponent from "@/components/common/ToastComponent";
 import RowComponent from "@/components/common/RowComponent";
 import { Colors } from "@/constants/Colors";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useAppDispatch } from "@/store/store";
+import { useAppDispatch, useAppSelector } from "@/store/store";
 import { login, getCurrentUser } from "@/store/slices/authSlice";
+import { fetchCart } from "@/store/slices/cartSlice";
+import { fetchNotifications } from "@/store/slices/notificationSlice";
+import WebSocketService from "@/services/web.socket.service";
 import { router } from "expo-router";
 
 const LoginScreen: React.FC = () => {
   const { isDarkMode } = useTheme();
   const dispatch = useAppDispatch();
+  const { accessToken, user } = useAppSelector((state) => state.auth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,9 +45,54 @@ const LoginScreen: React.FC = () => {
 
     try {
       // Gọi action login
-      await dispatch(login({ email, password })).unwrap();
+      const loginResult = await dispatch(login({ email, password })).unwrap();
       // Lấy thông tin người dùng
       await dispatch(getCurrentUser()).unwrap();
+      // Lấy giỏ hàng
+      await dispatch(fetchCart()).unwrap();
+      // Lấy thông báo
+      if (loginResult.userId) {
+        await dispatch(
+          fetchNotifications({ userId: loginResult.userId, page: 1, size: 10 })
+        ).unwrap();
+      }
+      // Kết nối WebSocket
+      if (user?.email && accessToken) {
+        WebSocketService.connect(
+          "ws://192.168.1.6:9990/ws", // Thay bằng URL backend của bạn
+          user.email,
+          accessToken,
+          (notification) => {
+            // Thêm thông báo mới vào Redux
+            dispatch({
+              type: "notifications/addNotification",
+              payload: {
+                ...notification,
+                id: Date.now(),
+                createdAt: new Date().toISOString(),
+                userId: loginResult.userId,
+                isRead: false,
+              },
+            });
+          },
+          () => console.log("Kết nối WebSocket thành công"),
+          (err) => {
+            console.error("Lỗi WebSocket:", err);
+            setToast({
+              message: "Không thể kết nối WebSocket",
+              type: "error",
+              visible: true,
+            });
+          }
+        );
+      } else {
+        setToast({
+          message: "Không tìm thấy email hoặc token để kết nối WebSocket",
+          type: "error",
+          visible: true,
+        });
+      }
+
       setToast({
         message: "Đăng nhập thành công!",
         type: "success",

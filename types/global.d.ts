@@ -169,7 +169,7 @@ declare global {
   interface IOrderInfo {
     id: number;
     orderCode: string;
-    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELED";
+    orderStatus: "PROCESSING" | "SHIPPING" | "COMPLETED" | "CANCELLED";
     totalPrice: number;
     createdAt: string;
     updatedAt: string;
@@ -192,5 +192,15 @@ declare global {
     address: string;
     status: "ACTIVE" | "INACTIVE";
     loyaltyPointsBalance: number;
+  }
+
+  interface INotification {
+    id: number;
+    title: string;
+    content: string;
+    isRead: boolean;
+    createdAt: string;
+    updatedAt: string;
+    userId: number;
   }
 }

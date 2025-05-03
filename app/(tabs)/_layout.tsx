@@ -1,5 +1,6 @@
+// TabsLayout.tsx
 import React from "react";
-import { StyleSheet, TouchableOpacity } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ImageComponent from "@/components/common/ImageComponent";
 import BadgeComponent from "@/components/common/BadgeComponent";
@@ -13,6 +14,10 @@ import { router } from "expo-router";
 export default function TabsLayout() {
   const cartCount = useSelector(
     (state: RootState) => state.cart.cart?.cartItems.length || 0
+  );
+  const unreadCount = useSelector(
+    (state: RootState) =>
+      state.notifications.notifications.filter((n) => !n.isRead).length || 0
   );
 
   return (
@@ -101,6 +106,29 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="notification"
+        options={{
+          title: "Thông báo",
+          tabBarIcon: ({ focused, color }) => (
+            <View style={styles.tabIconContainer}>
+              <Ionicons
+                name={focused ? "notifications" : "notifications-outline"}
+                size={focused ? 28 : 24}
+                color={color}
+              />
+              {unreadCount > 0 && (
+                <BadgeComponent
+                  text={unreadCount > 99 ? "99+" : unreadCount.toString()}
+                  type="error"
+                  style={styles.tabBadge}
+                  textStyle={styles.badgeText}
+                />
+              )}
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Hồ sơ",
@@ -134,6 +162,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  tabBadge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   badgeText: {
     fontSize: 10,
     fontWeight: "600",
@@ -155,5 +195,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "500",
     marginBottom: 4,
+  },
+  tabIconContainer: {
+    position: "relative",
   },
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, JSX } from "react";
 import { StyleSheet, View, ScrollView, TouchableOpacity } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
 import TextComponent from "@/components/common/TextComponent";
@@ -113,6 +113,7 @@ const MenuItemDetail = () => {
           text1: `${item.name} đã được thêm vào giỏ hàng!`,
           visibilityTime: 1200,
         });
+        router.back();
       } else {
         Toast.show({
           type: "error",

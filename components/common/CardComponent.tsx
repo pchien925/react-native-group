@@ -17,7 +17,7 @@ interface CardProps {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   titleStyle?: StyleProp<TextStyle>;
-  contentStyle?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<TextStyle>;
   imageHeight?: number;
   onPress?: () => void;
   imageUrl?: string;
@@ -75,10 +75,7 @@ const CardComponent: React.FC<CardProps> = ({
       {content && (
         <TextComponent
           type="body"
-          style={[
-            globalStyles.cardContent,
-            ...(contentStyle ? [contentStyle] : []),
-          ]}
+          style={[globalStyles.cardContent, contentStyle]}
         >
           {content}
         </TextComponent>

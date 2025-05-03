@@ -174,3 +174,22 @@ export const cancelOrderApi = (
   const url = `/api/v1/orders/${orderId}/cancel?userId=${userId}`;
   return axios.patch(url);
 };
+
+export const getNotificationsApi = (
+  userId: number,
+  page: number,
+  size: number,
+  sort: string = "id",
+  direction: string = "desc"
+): Promise<IBackendResponse<IPaginationData<INotification>>> => {
+  const url = `/api/v1/notifications?userId=${userId}&page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
+  return axios.get(url);
+};
+
+export const markNotificationAsReadApi = (
+  notificationId: number,
+  userId: number
+): Promise<IBackendResponse<INotification>> => {
+  const url = `/api/v1/notifications/${notificationId}/read?userId=${userId}`;
+  return axios.put(url);
+};

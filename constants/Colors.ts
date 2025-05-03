@@ -11,8 +11,8 @@ export const Colors = {
   // Màu nền và bề mặt
   backgroundLight: "#FEFEFE", // Trắng sáng gần tinh khiết, nền chính cho giao diện sáng
   backgroundDark: "#2E1C1A", // Nâu vỏ bánh đậm, nền tối
-  surfaceLight: "#FFECB3", // Beige phô mai tan chảy, bề mặt sáng cho thẻ
-  surfaceDark: "#3E2723", // Nâu vỏ bánh đậm, bề mặt tối cho thẻ
+  surfaceLight: "#FFF8E1", // Vàng kem nhạt, bề mặt sáng cho thẻ, tăng độ ấm và dễ chịu
+  surfaceDark: "#4E342E", // Nâu đất đậm, bề mặt tối cho thẻ, sâu hơn và hiện đại hơn
   borderLight: "#D7CCC8", // Beige nấm, viền sáng
   borderDark: "#5D4037", // Nâu cà phê, viền tối
 
