@@ -1,4 +1,5 @@
 // services/api.ts
+import { use } from "react";
 import axios from "./axios.instance";
 
 export const refreshTokenApi = (
@@ -192,4 +193,40 @@ export const markNotificationAsReadApi = (
 ): Promise<IBackendResponse<INotification>> => {
   const url = `/api/v1/notifications/${notificationId}/read?userId=${userId}`;
   return axios.put(url);
+};
+
+export const addToWishlistApi = (
+  userId: number,
+  menuItemId: number
+): Promise<IBackendResponse<IMenuItem>> => {
+  const url = `/api/v1/wishlist-items`;
+  const data = { userId, menuItemId };
+  return axios.post(url, data);
+};
+
+export const removeFromWishlistApi = (
+  userId: number,
+  menuItemId: number
+): Promise<IBackendResponse<void>> => {
+  const url = `/api/v1/wishlist-items/${userId}/${menuItemId}`;
+  return axios.delete(url);
+};
+
+export const getWishlistApi = (
+  userId: number,
+  page: number,
+  size: number,
+  sort: string = "id",
+  direction: string = "asc"
+): Promise<IBackendResponse<IPaginationData<IMenuItem>>> => {
+  const url = `/api/v1/wishlist-items?userId=${userId}&page=${page}&size=${size}&sort=${sort}&direction=${direction}`;
+  return axios.get(url);
+};
+
+export const getWishlistByItemIdApi = (
+  userId: number,
+  menuItemId: number
+): Promise<IBackendResponse<IMenuItem>> => {
+  const url = `/api/v1/wishlist-items/${userId}/${menuItemId}`;
+  return axios.get(url);
 };

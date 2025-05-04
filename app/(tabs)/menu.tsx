@@ -158,6 +158,12 @@ const MenuScreen = () => {
     setPage(1);
   };
 
+  const handleAllPress = () => {
+    setSelectedCategory(null);
+    setMenuItems([]);
+    setPage(1);
+  };
+
   const handleAddToCart = async (item: IMenuItem) => {
     setSelectedItem(item);
     setSelectedOptions({});
@@ -259,13 +265,27 @@ const MenuScreen = () => {
     <ContainerComponent>
       {/* Category List */}
       <FlatList
-        data={categories}
+        data={[
+          {
+            id: 0,
+            name: "Tất cả",
+            imageUrl:
+              "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS6O28blRLfON6P3VTBH4KqRdu-nAndIthHDA&s",
+          } as IMenuCategory,
+          ...categories,
+        ]}
         renderItem={({ item }) => (
           <View style={{ flex: 1 }}>
             <MenuCategoryComponent
               category={item}
-              onPress={() => handleCategoryPress(item)}
-              isSelected={item.id === selectedCategory?.id}
+              onPress={() =>
+                item.id === 0 ? handleAllPress() : handleCategoryPress(item)
+              }
+              isSelected={
+                item.id === 0
+                  ? selectedCategory === null
+                  : item.id === selectedCategory?.id
+              }
             />
           </View>
         )}
@@ -275,7 +295,7 @@ const MenuScreen = () => {
         contentContainerStyle={{ paddingVertical: 16, marginBottom: 8 }}
       />
       <SpaceComponent size={16} />
-      {/* Menu Items List */}
+
       {loading && !menuItems.length && !refreshing ? (
         <LoadingComponent
           loadingText="Đang tải món ăn..."
