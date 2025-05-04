@@ -67,9 +67,8 @@ const ProfileScreen: React.FC = () => {
   }, []);
 
   // Handle navigation to notifications (placeholder route)
-  const handleViewNotifications = useCallback(() => {
-    console.log("Navigate to Notifications");
-    // router.push("/notifications");
+  const handleViewOrder = useCallback(() => {
+    router.push("/order/history");
   }, []);
 
   // Render loading state
@@ -265,10 +264,10 @@ const ProfileScreen: React.FC = () => {
                 elevation: 3,
               },
             ]}
-            onPress={handleViewNotifications}
+            onPress={handleViewOrder}
           >
             <Ionicons
-              name="notifications-outline"
+              name="receipt-outline"
               size={24}
               color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
               style={styles.actionIcon}
@@ -283,7 +282,7 @@ const ProfileScreen: React.FC = () => {
                 },
               ]}
             >
-              Thông báo
+              Đơn hàng của bạn
             </TextComponent>
             <Ionicons
               name="chevron-forward"

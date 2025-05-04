@@ -37,6 +37,13 @@ const RootLayout = () => {
             }}
           />
           <Stack.Screen
+            name="order/history"
+            options={{
+              headerShown: true,
+              headerTitle: "Lịch sử đơn hàng",
+            }}
+          />
+          <Stack.Screen
             name="profile/detail"
             options={{
               headerShown: true,

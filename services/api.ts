@@ -1,5 +1,4 @@
 // services/api.ts
-import { use } from "react";
 import axios from "./axios.instance";
 
 export const refreshTokenApi = (
@@ -229,4 +228,32 @@ export const getWishlistByItemIdApi = (
 ): Promise<IBackendResponse<IMenuItem>> => {
   const url = `/api/v1/wishlist-items/${userId}/${menuItemId}`;
   return axios.get(url);
+};
+
+export const updateUserApi = (
+  userId: number,
+  data: {
+    fullName?: string;
+    phone?: string;
+    dob?: Date;
+    gender?: "MALE" | "FEMALE" | "OTHER";
+    avatar?: string;
+    address?: string;
+  }
+): Promise<IBackendResponse<IUser>> => {
+  const url = `/api/v1/users/${userId}`;
+  return axios.put(url, data);
+};
+
+export const uploadFileApi = (
+  file: File
+): Promise<IBackendResponse<string>> => {
+  const url = `/api/v1/upload`;
+  const formData = new FormData();
+  formData.append("file", file);
+  return axios.post(url, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 };

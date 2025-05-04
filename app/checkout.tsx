@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, ScrollView, View, Pressable } from "react-native";
+import {
+  StyleSheet,
+  ScrollView,
+  View,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import TextComponent from "@/components/common/TextComponent";
 import InputComponent from "@/components/common/InputComponent";
@@ -22,11 +28,17 @@ import { Ionicons } from "@expo/vector-icons";
 const CheckoutScreen = () => {
   const dispatch = useAppDispatch();
   const { isDarkMode } = useTheme();
-  const cart = useSelector((state: RootState) => state.cart.cart);
-  const user = useSelector((state: RootState) => state.auth.user);
+  const cart = useSelector(
+    (state: RootState) => state.cart.cart
+  ) as ICart | null;
+  const user = useSelector(
+    (state: RootState) => state.auth.user
+  ) as IUser | null;
 
   const [shippingAddress, setShippingAddress] = useState("");
-  const [useDefaultAddress, setUseDefaultAddress] = useState(false);
+  const [addressOption, setAddressOption] = useState<
+    "NEW" | "STORE" | "DEFAULT"
+  >("NEW");
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<
     "COD" | "VNPAY" | "MOMO" | "BANK_TRANSFER" | "CREDIT_CARD"
@@ -37,6 +49,11 @@ const CheckoutScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addressError, setAddressError] = useState<string | null>(null);
+
+  const selectedBranch: IBranch | undefined = branches.find(
+    (branch) => branch.id === branchId
+  );
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -66,15 +83,23 @@ const CheckoutScreen = () => {
   }, []);
 
   useEffect(() => {
-    if (useDefaultAddress && user?.address) {
+    if (addressOption === "STORE" && selectedBranch?.address) {
+      setShippingAddress(selectedBranch.address);
+      setAddressError(null);
+    } else if (addressOption === "DEFAULT" && user?.address) {
       setShippingAddress(user.address);
-    } else if (!useDefaultAddress) {
+      setAddressError(null);
+    } else {
       setShippingAddress("");
+      setAddressError(null);
     }
-  }, [useDefaultAddress, user?.address]);
+  }, [addressOption, user?.address, selectedBranch]);
 
   const handleCheckout = async () => {
     if (!cart || !user || !branchId || !shippingAddress) {
+      if (!shippingAddress) {
+        setAddressError("Vui lòng nhập hoặc chọn địa chỉ giao hàng");
+      }
       Toast.show({ type: "error", text1: "Vui lòng nhập đầy đủ thông tin" });
       return;
     }
@@ -108,11 +133,61 @@ const CheckoutScreen = () => {
     setBranchModalVisible(false);
   };
 
-  const toggleDefaultAddress = () => {
-    setUseDefaultAddress(!useDefaultAddress);
+  const selectAddressOption = (option: "NEW" | "STORE" | "DEFAULT") => {
+    if (option === "STORE" && !selectedBranch) {
+      Toast.show({ type: "error", text1: "Vui lòng chọn chi nhánh trước" });
+      return;
+    }
+    setAddressOption(option);
   };
 
-  const selectedBranch = branches.find((branch) => branch.id === branchId);
+  const renderCartItem = (item: ICartItem) => {
+    const optionPrice = item.selectedOptions.reduce(
+      (sum, opt) => sum + opt.additionalPrice,
+      0
+    );
+    const totalPrice = (item.priceAtAddition + optionPrice) * item.quantity;
+
+    return (
+      <RowComponent key={item.id.toString()} style={styles.cartItem}>
+        <TextComponent
+          type="body"
+          style={{
+            color: isDarkMode
+              ? Colors.textDarkPrimary
+              : Colors.textLightPrimary,
+            flex: 1,
+            paddingRight: 8,
+          }}
+        >
+          {item.menuItem.name} x{item.quantity}
+          {item.selectedOptions.length > 0 && (
+            <TextComponent
+              type="caption"
+              style={{
+                color: isDarkMode
+                  ? Colors.textDarkSecondary
+                  : Colors.textLightSecondary,
+                marginTop: 4,
+              }}
+            >
+              ({item.selectedOptions.map((opt) => opt.value).join(", ")})
+            </TextComponent>
+          )}
+        </TextComponent>
+        <TextComponent
+          type="body"
+          style={{
+            color: isDarkMode
+              ? Colors.textDarkPrimary
+              : Colors.textLightPrimary,
+          }}
+        >
+          {totalPrice.toLocaleString("vi-VN")} VNĐ
+        </TextComponent>
+      </RowComponent>
+    );
+  };
 
   if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
     return (
@@ -145,7 +220,7 @@ const CheckoutScreen = () => {
 
   return (
     <ContainerComponent
-      scrollable
+      scrollable={true}
       style={[
         styles.container,
         {
@@ -170,7 +245,20 @@ const CheckoutScreen = () => {
         >
           Tổng quan đơn hàng
         </TextComponent>
-        <TextComponent type="body" style={[styles.summaryText]}>
+        <View style={styles.cartList}>
+          {cart.cartItems.map((item) => renderCartItem(item))}
+        </View>
+        <TextComponent
+          type="body"
+          style={[
+            styles.summaryText,
+            {
+              color: isDarkMode
+                ? Colors.textDarkPrimary
+                : Colors.textLightPrimary,
+            },
+          ]}
+        >
           Tổng cộng: {cart.totalPrice.toLocaleString("vi-VN")} VNĐ (
           {cart.cartItems.length} món)
         </TextComponent>
@@ -219,13 +307,125 @@ const CheckoutScreen = () => {
         >
           Thông tin giao hàng
         </TextComponent>
+        <TextComponent
+          type="body"
+          style={{
+            color: isDarkMode
+              ? Colors.textDarkSecondary
+              : Colors.textLightSecondary,
+            marginBottom: 12,
+          }}
+        >
+          Chọn phương thức nhận hàng
+        </TextComponent>
+        <Pressable
+          onPress={() => selectAddressOption("NEW")}
+          style={({ pressed }) => [
+            styles.defaultAddressContainer,
+            {
+              backgroundColor:
+                addressOption === "NEW"
+                  ? isDarkMode
+                    ? Colors.backgroundDark
+                    : Colors.backgroundLight
+                  : "transparent",
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <Ionicons
+            name={
+              addressOption === "NEW" ? "radio-button-on" : "radio-button-off"
+            }
+            size={20}
+            color={Colors.accent}
+          />
+          <TextComponent
+            type="body"
+            style={[
+              styles.defaultAddressText,
+              {
+                color: isDarkMode
+                  ? Colors.textDarkPrimary
+                  : Colors.textLightPrimary,
+              },
+            ]}
+          >
+            Nhập địa chỉ mới
+          </TextComponent>
+        </Pressable>
+        <Pressable
+          onPress={() => selectAddressOption("STORE")}
+          style={({ pressed }) => [
+            styles.defaultAddressContainer,
+            {
+              backgroundColor:
+                addressOption === "STORE"
+                  ? isDarkMode
+                    ? Colors.backgroundDark
+                    : Colors.backgroundLight
+                  : "transparent",
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <Ionicons
+            name={
+              addressOption === "STORE" ? "radio-button-on" : "radio-button-off"
+            }
+            size={20}
+            color={Colors.accent}
+          />
+          <TextComponent
+            type="body"
+            style={[
+              styles.defaultAddressText,
+              {
+                color: isDarkMode
+                  ? Colors.textDarkPrimary
+                  : Colors.textLightPrimary,
+              },
+            ]}
+          >
+            Nhận tại cửa hàng
+          </TextComponent>
+        </Pressable>
+        {addressOption === "STORE" && selectedBranch?.address && (
+          <TextComponent
+            type="caption"
+            style={{
+              color: isDarkMode
+                ? Colors.textDarkSecondary
+                : Colors.textLightSecondary,
+              marginLeft: 28,
+              marginBottom: 16,
+            }}
+          >
+            Địa chỉ: {selectedBranch.address}
+          </TextComponent>
+        )}
         {user?.address && (
           <Pressable
-            onPress={toggleDefaultAddress}
-            style={styles.defaultAddressContainer}
+            onPress={() => selectAddressOption("DEFAULT")}
+            style={({ pressed }) => [
+              styles.defaultAddressContainer,
+              {
+                backgroundColor:
+                  addressOption === "DEFAULT"
+                    ? isDarkMode
+                      ? Colors.backgroundDark
+                      : Colors.backgroundLight
+                    : "transparent",
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
           >
             <Ionicons
-              name={useDefaultAddress ? "checkbox" : "square-outline"}
+              name={
+                addressOption === "DEFAULT"
+                  ? "radio-button-on"
+                  : "radio-button-off"
+              }
               size={20}
               color={Colors.accent}
             />
@@ -244,23 +444,47 @@ const CheckoutScreen = () => {
             </TextComponent>
           </Pressable>
         )}
-        <InputComponent
-          placeholder="Địa chỉ giao hàng"
-          value={shippingAddress}
-          onChangeText={setShippingAddress}
+        <View
           style={[
-            styles.input,
-            {
-              borderColor: Colors.secondary,
-              backgroundColor: Colors.backgroundLight,
-            },
+            styles.inputContainer,
+            { opacity: addressOption === "NEW" ? 1 : 0.5 },
           ]}
-          placeholderTextColor={
-            isDarkMode ? Colors.textDarkSecondary : Colors.textLightSecondary
-          }
-          accessibilityLabel="Nhập địa chỉ giao hàng"
-          editable={!useDefaultAddress}
-        />
+        >
+          <Ionicons
+            name="location-outline"
+            size={24}
+            color={
+              isDarkMode ? Colors.textDarkSecondary : Colors.textLightSecondary
+            }
+            style={styles.inputIcon}
+          />
+          <InputComponent
+            placeholder="Địa chỉ giao hàng"
+            value={shippingAddress}
+            onChangeText={setShippingAddress}
+            style={[
+              styles.input,
+              {
+                borderColor: Colors.secondary,
+                backgroundColor: Colors.backgroundLight,
+                paddingLeft: 40,
+              },
+            ]}
+            placeholderTextColor={
+              isDarkMode ? Colors.textDarkSecondary : Colors.textLightSecondary
+            }
+            accessibilityLabel="Nhập địa chỉ giao hàng"
+            editable={addressOption === "NEW"}
+          />
+        </View>
+        {addressError && (
+          <TextComponent
+            type="caption"
+            style={{ color: Colors.error, marginBottom: 12 }}
+          >
+            {addressError}
+          </TextComponent>
+        )}
         <InputComponent
           placeholder="Ghi chú (tùy chọn)"
           value={note}
@@ -295,44 +519,72 @@ const CheckoutScreen = () => {
         >
           Phương thức thanh toán
         </TextComponent>
-        <RowComponent style={styles.paymentMethods}>
-          {["COD", "VNPAY", "MOMO", "BANK_TRANSFER", "CREDIT_CARD"].map(
-            (method) => (
-              <Pressable
-                key={method}
-                onPress={() => setPaymentMethod(method as any)}
-                style={({ pressed }) => [
-                  styles.paymentButton,
-                  {
-                    borderColor:
-                      paymentMethod === method
-                        ? Colors.accent
-                        : Colors.secondary,
-                    backgroundColor:
-                      paymentMethod === method
-                        ? Colors.accent
-                        : Colors.backgroundLight,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
+        <RowComponent style={[styles.paymentMethods, { flexWrap: "wrap" }]}>
+          {[
+            {
+              method: "COD",
+              icon: "cash-outline",
+              label: "Thanh toán khi nhận hàng",
+            },
+            { method: "VNPAY", icon: "card-outline", label: "VNPAY" },
+            { method: "MOMO", icon: "wallet-outline", label: "MOMO" },
+            {
+              method: "BANK_TRANSFER",
+              icon: "business-outline",
+              label: "Chuyển khoản ngân hàng",
+            },
+            {
+              method: "CREDIT_CARD",
+              icon: "card-outline",
+              label: "Thẻ tín dụng",
+            },
+          ].map(({ method, icon, label }) => (
+            <Pressable
+              key={method}
+              onPress={() => setPaymentMethod(method as any)}
+              style={({ pressed }) => [
+                styles.paymentCard,
+                {
+                  borderColor:
+                    paymentMethod === method ? Colors.accent : Colors.secondary,
+                  backgroundColor:
+                    paymentMethod === method
+                      ? isDarkMode
+                        ? Colors.backgroundDark
+                        : Colors.backgroundLight
+                      : Colors.backgroundLight,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <Ionicons
+                name={icon as any}
+                size={24}
+                color={
+                  paymentMethod === method
+                    ? Colors.primary
+                    : isDarkMode
+                    ? Colors.textDarkSecondary
+                    : Colors.textLightSecondary
+                }
+                style={styles.paymentIcon}
+              />
+              <TextComponent
+                type="body"
+                style={{
+                  color:
+                    paymentMethod === method
+                      ? Colors.primary
+                      : isDarkMode
+                      ? Colors.textDarkPrimary
+                      : Colors.textLightPrimary,
+                  fontWeight: paymentMethod === method ? "600" : "500",
+                }}
               >
-                <TextComponent
-                  type="body"
-                  style={{
-                    color:
-                      paymentMethod === method
-                        ? Colors.backgroundLight
-                        : isDarkMode
-                        ? Colors.textDarkPrimary
-                        : Colors.textLightPrimary,
-                    fontWeight: paymentMethod === method ? "600" : "500",
-                  }}
-                >
-                  {method}
-                </TextComponent>
-              </Pressable>
-            )
-          )}
+                {label}
+              </TextComponent>
+            </Pressable>
+          ))}
         </RowComponent>
       </CardComponent>
       <SpaceComponent size={16} />
@@ -553,6 +805,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: Colors.primary,
+    marginTop: 12,
   },
   emptyText: {
     textAlign: "center",
@@ -567,8 +820,10 @@ const styles = StyleSheet.create({
   defaultAddressContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
     gap: 8,
+    padding: 8,
+    borderRadius: 8,
   },
   defaultAddressText: {
     fontSize: 14,
@@ -584,8 +839,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
-  input: {
+  inputContainer: {
+    position: "relative",
     marginBottom: 12,
+  },
+  input: {
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -593,22 +851,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: Colors.backgroundLight,
   },
+  inputIcon: {
+    position: "absolute",
+    left: 10,
+    top: 16,
+    zIndex: 1,
+  },
   branchButton: {
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
     backgroundColor: Colors.backgroundLight,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   paymentMethods: {
-    flexWrap: "wrap",
-    gap: 8,
+    gap: 12,
   },
-  paymentButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+  paymentCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    backgroundColor: Colors.backgroundLight,
+    width: "48%",
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  paymentIcon: {
+    marginRight: 8,
   },
   confirmButton: {
     paddingVertical: 14,
@@ -641,6 +917,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 8,
     borderWidth: 1,
+  },
+  cartList: {
+    maxHeight: 150,
+    overflow: "hidden",
+  },
+  cartItem: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.secondary,
   },
 });
 

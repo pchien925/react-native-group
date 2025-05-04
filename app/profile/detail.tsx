@@ -1,5 +1,5 @@
-import React, { useEffect, useCallback } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import React, { useState, useCallback, useEffect } from "react";
+import { ScrollView, StyleSheet, Alert, View } from "react-native";
 import { router } from "expo-router";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
@@ -7,14 +7,16 @@ import TextComponent from "@/components/common/TextComponent";
 import ButtonComponent from "@/components/common/ButtonComponent";
 import RowComponent from "@/components/common/RowComponent";
 import LoadingComponent from "@/components/common/LoadingComponent";
-import ImageComponent from "@/components/common/ImageComponent";
+import InputComponent from "@/components/common/InputComponent";
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAppDispatch, useAppSelector } from "@/store/store";
 import { getCurrentUser } from "@/store/slices/authSlice";
 import CardComponent from "@/components/common/CardComponent";
-import { View } from "react-native";
+import { updateUserApi, uploadFileApi } from "@/services/api";
+import ImagePickerComponent from "@/components/common/ImagePickerComponent";
+import ImageComponent from "@/components/common/ImageComponent";
 
 type IconName =
   | "mail-outline"
@@ -25,43 +27,160 @@ type IconName =
   | "star-outline"
   | "shield-checkmark-outline";
 
+interface IUser {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  dob: string;
+  avatar: string | null;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  address: string;
+  status: "ACTIVE" | "INACTIVE";
+  loyaltyPointsBalance: number;
+}
+
 const ProfileDetailsScreen: React.FC = () => {
   const { isDarkMode } = useTheme();
   const dispatch = useAppDispatch();
   const { user, status, error } = useAppSelector((state) => state.auth);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [formData, setFormData] = useState<{
+    fullName: string;
+    phone: string;
+    dob: string;
+    gender: "MALE" | "FEMALE" | "OTHER";
+    address: string;
+    avatar: string | null;
+  }>({
+    fullName: "",
+    phone: "",
+    dob: "",
+    gender: "OTHER",
+    address: "",
+    avatar: null,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch user data if not loaded
+  // Initialize form data and fetch user info
   useEffect(() => {
+    if (user) {
+      setFormData({
+        fullName: user.fullName || "",
+        phone: user.phone || "",
+        dob: user.dob || "",
+        gender: user.gender || "OTHER",
+        address: user.address || "",
+        avatar: user.avatar || null,
+      });
+    }
     if (!user && status === "idle") {
       dispatch(getCurrentUser());
     }
-  }, [dispatch, user, status]);
+  }, [user, status, dispatch]);
 
-  // Handle navigation to edit profile (placeholder route)
-  const handleEditProfile = useCallback(() => {
-    console.log("Navigate to Edit Profile");
-    // router.push("/profile/edit");
+  // Handle input changes
+  const handleInputChange = useCallback((key: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // Render loading state
+  // Handle image pick and upload
+  const handleImagePick = useCallback(async (file: File) => {
+    setIsSubmitting(true);
+    try {
+      const response = await uploadFileApi(file);
+      if (response.data) {
+        setFormData((prev) => ({
+          ...prev,
+          avatar: response.data as string,
+        }));
+      } else {
+        Alert.alert("Error", "No image URL received from server");
+      }
+    } catch (error) {
+      console.error("Image upload error:", error);
+      Alert.alert("Error", "Failed to upload image");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, []);
+
+  // Handle profile save
+  const handleSaveProfile = useCallback(async () => {
+    if (!user?.id) return;
+
+    // Validate data
+    if (!formData.fullName) {
+      Alert.alert("Error", "Full name is required");
+      return;
+    }
+    if (formData.dob && !/^\d{4}-\d{2}-\d{2}$/.test(formData.dob)) {
+      Alert.alert("Error", "Date of birth must be in YYYY-MM-DD format");
+      return;
+    }
+    if (
+      formData.gender &&
+      !["MALE", "FEMALE", "OTHER"].includes(formData.gender)
+    ) {
+      Alert.alert("Error", "Gender must be Male, Female, or Other");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const apiData = {
+        fullName: formData.fullName,
+        phone: formData.phone || undefined,
+        dob: formData.dob ? new Date(formData.dob) : undefined,
+        gender: formData.gender,
+        address: formData.address || undefined,
+        avatar: formData.avatar || undefined,
+      };
+      await updateUserApi(user.id, apiData);
+      dispatch(getCurrentUser());
+      Alert.alert("Success", "Profile updated successfully");
+      setIsEditMode(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update profile");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [formData, user?.id, dispatch]);
+
+  // Toggle edit mode
+  const handleEditToggle = useCallback(() => {
+    setIsEditMode((prev) => !prev);
+    if (isEditMode && user) {
+      setFormData({
+        fullName: user.fullName || "",
+        phone: user.phone || "",
+        dob: user.dob || "",
+        gender: user.gender || "OTHER",
+        address: user.address || "",
+        avatar: user.avatar || null,
+      });
+    }
+  }, [isEditMode, user]);
+
+  // Loading state
   if (status === "loading") {
     return (
       <ContainerComponent style={styles.container}>
         <LoadingComponent
-          loadingText="Đang tải thông tin..."
+          loadingText="Loading..."
           style={styles.loadingContainer}
         />
       </ContainerComponent>
     );
   }
 
-  // Render error or no-user state
+  // Error or no user state
   if (status === "failed" || !user) {
     return (
       <ContainerComponent style={styles.container}>
         <CardComponent
-          title="Lỗi"
-          content={error || "Không thể tải thông tin người dùng"}
+          title="Error"
+          content={error || "Unable to load user data"}
           style={[
             styles.errorCard,
             {
@@ -77,7 +196,7 @@ const ProfileDetailsScreen: React.FC = () => {
           }}
         />
         <ButtonComponent
-          title="Quay lại"
+          title="Back"
           type="primary"
           onPress={() => router.back()}
           style={styles.backButton}
@@ -87,7 +206,6 @@ const ProfileDetailsScreen: React.FC = () => {
     );
   }
 
-  // Main profile details render
   return (
     <ContainerComponent
       style={[
@@ -101,7 +219,7 @@ const ProfileDetailsScreen: React.FC = () => {
       scrollable
     >
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
+        {/* Profile header */}
         <CardComponent
           style={[
             styles.headerCard,
@@ -112,14 +230,32 @@ const ProfileDetailsScreen: React.FC = () => {
           ]}
         >
           <RowComponent alignItems="center" style={styles.headerRow}>
-            {user.avatar ? (
+            {isEditMode ? (
+              <ImagePickerComponent
+                imageUri={formData.avatar}
+                onImagePick={handleImagePick}
+                style={styles.avatarImage}
+              />
+            ) : formData.avatar ? (
               <ImageComponent
-                source={{ uri: user.avatar }}
+                source={{ uri: formData.avatar }}
                 style={styles.avatarImage}
                 resizeMode="cover"
               />
             ) : (
-              <View style={styles.avatarPlaceholder}>
+              <View
+                style={[
+                  styles.avatarPlaceholder,
+                  {
+                    backgroundColor: isDarkMode
+                      ? Colors.backgroundDark
+                      : Colors.backgroundLight,
+                    borderColor: isDarkMode
+                      ? Colors.borderDark
+                      : Colors.borderLight,
+                  },
+                ]}
+              >
                 <Ionicons
                   name="person-circle-outline"
                   size={64}
@@ -128,14 +264,25 @@ const ProfileDetailsScreen: React.FC = () => {
               </View>
             )}
             <View style={styles.headerTextContainer}>
-              <TextComponent
-                style={[
-                  styles.userName,
-                  { color: isDarkMode ? Colors.textDarkPrimary : Colors.white },
-                ]}
-              >
-                {user.fullName}
-              </TextComponent>
+              {isEditMode ? (
+                <InputComponent
+                  value={formData.fullName}
+                  onChangeText={(text) => handleInputChange("fullName", text)}
+                  placeholder="Full name"
+                  style={styles.input}
+                />
+              ) : (
+                <TextComponent
+                  style={[
+                    styles.userName,
+                    {
+                      color: isDarkMode ? Colors.textDarkPrimary : Colors.white,
+                    },
+                  ]}
+                >
+                  {formData.fullName}
+                </TextComponent>
+              )}
               <TextComponent
                 style={[
                   styles.userEmail,
@@ -152,14 +299,14 @@ const ProfileDetailsScreen: React.FC = () => {
 
         <SpaceComponent size={20} />
 
-        {/* Detailed Information */}
+        {/* Personal information */}
         <CardComponent
-          title="Thông tin cá nhân"
+          title="Personal Information"
           style={[
             styles.infoCard,
             {
               backgroundColor: isDarkMode ? Colors.crust : Colors.garlicCream,
-              borderColor: isDarkMode ? Colors.borderDark : Colors.mushroom,
+              borderColor: isDarkMode ? Colors.borderDark : Colors.borderLight,
             },
           ]}
           titleStyle={styles.sectionTitle}
@@ -169,41 +316,52 @@ const ProfileDetailsScreen: React.FC = () => {
               icon: "mail-outline" as IconName,
               label: "Email",
               value: user.email,
+              editable: false,
             },
             {
               icon: "call-outline" as IconName,
-              label: "Số điện thoại",
-              value: user.phone || "Chưa cung cấp",
+              label: "Phone",
+              value: formData.phone || "Not provided",
+              key: "phone",
+              editable: true,
             },
             {
               icon: "calendar-outline" as IconName,
-              label: "Ngày sinh",
-              value: user.dob || "Chưa cung cấp",
+              label: "Date of Birth",
+              value: formData.dob || "Not provided",
+              key: "dob",
+              editable: true,
             },
             {
               icon: "person-outline" as IconName,
-              label: "Giới tính",
+              label: "Gender",
               value:
-                user.gender === "MALE"
-                  ? "Nam"
-                  : user.gender === "FEMALE"
-                  ? "Nữ"
-                  : user.gender || "Chưa cung cấp",
+                formData.gender === "MALE"
+                  ? "Male"
+                  : formData.gender === "FEMALE"
+                  ? "Female"
+                  : formData.gender || "Not provided",
+              key: "gender",
+              editable: true,
             },
             {
               icon: "location-outline" as IconName,
-              label: "Địa chỉ",
-              value: user.address || "Chưa cung cấp",
+              label: "Address",
+              value: formData.address || "Not provided",
+              key: "address",
+              editable: true,
             },
             {
               icon: "star-outline" as IconName,
-              label: "Điểm thưởng",
+              label: "Loyalty Points",
               value: user.loyaltyPointsBalance?.toString() || "0",
+              editable: false,
             },
             {
               icon: "shield-checkmark-outline" as IconName,
-              label: "Trạng thái",
-              value: user.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động",
+              label: "Status",
+              value: user.status === "ACTIVE" ? "Active" : "Inactive",
+              editable: false,
             },
           ].map((item, index) => (
             <RowComponent
@@ -215,11 +373,6 @@ const ProfileDetailsScreen: React.FC = () => {
                   backgroundColor: isDarkMode
                     ? Colors.backgroundDark
                     : Colors.white,
-                  shadowColor: Colors.black,
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 2,
                 },
               ]}
             >
@@ -229,55 +382,78 @@ const ProfileDetailsScreen: React.FC = () => {
                 color={isDarkMode ? Colors.iconInactive : Colors.iconActive}
                 style={styles.infoIcon}
               />
-              <TextComponent
-                style={[
-                  styles.infoText,
-                  {
-                    color: isDarkMode
-                      ? Colors.textDarkPrimary
-                      : Colors.textLightPrimary,
-                  },
-                ]}
-              >
-                {item.label}:{" "}
-                <TextComponent style={styles.infoValue}>
-                  {item.value}
+              {isEditMode && item.editable ? (
+                <InputComponent
+                  value={item.value}
+                  onChangeText={(text) => handleInputChange(item.key!, text)}
+                  placeholder={`Enter ${item.label.toLowerCase()}`}
+                  style={styles.input}
+                />
+              ) : (
+                <TextComponent
+                  style={[
+                    styles.infoText,
+                    {
+                      color: isDarkMode
+                        ? Colors.textDarkPrimary
+                        : Colors.textLightPrimary,
+                    },
+                  ]}
+                >
+                  {item.label}:{" "}
+                  <TextComponent style={styles.infoValue}>
+                    {item.value}
+                  </TextComponent>
                 </TextComponent>
-              </TextComponent>
+              )}
             </RowComponent>
           ))}
         </CardComponent>
 
         <SpaceComponent size={20} />
 
-        {/* Action Buttons */}
+        {/* Action buttons */}
         <RowComponent style={styles.buttonRow}>
           <ButtonComponent
-            title="Chỉnh sửa hồ sơ"
-            type="outline"
-            onPress={handleEditProfile}
+            title={
+              isEditMode
+                ? isSubmitting
+                  ? "Saving..."
+                  : "Save"
+                : "Edit Profile"
+            }
+            type={isEditMode ? "primary" : "outline"}
+            onPress={isEditMode ? handleSaveProfile : handleEditToggle}
+            disabled={isSubmitting}
             style={[
               styles.editButton,
               {
                 borderColor: isDarkMode ? Colors.primary : Colors.accent,
+                backgroundColor: isEditMode
+                  ? isDarkMode
+                    ? Colors.primary
+                    : Colors.accent
+                  : "transparent",
               },
             ]}
             textStyle={[
               styles.editButtonText,
               {
-                color: isDarkMode ? Colors.primary : Colors.accent,
+                color: isEditMode
+                  ? Colors.white
+                  : isDarkMode
+                  ? Colors.primary
+                  : Colors.accent,
               },
             ]}
           />
           <ButtonComponent
-            title="Quay lại"
+            title={isEditMode ? "Cancel" : "Back"}
             type="primary"
-            onPress={() => router.back()}
+            onPress={isEditMode ? handleEditToggle : () => router.back()}
             style={[
               styles.backButton,
-              {
-                backgroundColor: isDarkMode ? Colors.primary : Colors.accent,
-              },
+              { backgroundColor: isDarkMode ? Colors.primary : Colors.accent },
             ]}
             textStyle={styles.backButtonText}
           />
@@ -290,11 +466,7 @@ const ProfileDetailsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-  },
+  container: { flex: 1, paddingHorizontal: 16, paddingTop: 10 },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -318,9 +490,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  headerRow: {
-    marginTop: 8,
-  },
+  headerRow: { marginTop: 8 },
   avatarImage: {
     width: 70,
     height: 70,
@@ -335,23 +505,12 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.backgroundLight,
     marginRight: 16,
     borderWidth: 1,
-    borderColor: Colors.borderDark,
   },
-  headerTextContainer: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  userEmail: {
-    fontSize: 14,
-    opacity: 0.8,
-    marginTop: 4,
-  },
+  headerTextContainer: { flex: 1 },
+  userName: { fontSize: 20, fontWeight: "700" },
+  userEmail: { fontSize: 14, opacity: 0.8, marginTop: 4 },
   infoCard: {
     borderWidth: 1,
     borderRadius: 16,
@@ -365,7 +524,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-
     color: Colors.textDarkPrimary,
   },
   infoRow: {
@@ -373,20 +531,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginVertical: 4,
     borderRadius: 8,
+    elevation: 2,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
-  infoIcon: {
-    marginRight: 12,
-  },
-  infoText: {
-    fontSize: 15,
+  infoIcon: { marginRight: 12 },
+  infoText: { fontSize: 15, flex: 1 },
+  infoValue: { fontWeight: "600" },
+  input: {
     flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.borderDark,
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 15,
   },
-  infoValue: {
-    fontWeight: "600",
-  },
-  buttonRow: {
-    justifyContent: "space-between",
-  },
+  buttonRow: { justifyContent: "space-between" },
   editButton: {
     flex: 1,
     borderRadius: 12,
@@ -394,10 +556,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderWidth: 2,
   },
-  editButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  editButtonText: { fontSize: 16, fontWeight: "600" },
   backButton: {
     flex: 1,
     borderRadius: 12,
@@ -405,11 +564,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     elevation: 2,
   },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: Colors.white,
-  },
+  backButtonText: { fontSize: 16, fontWeight: "700", color: Colors.white },
 });
 
 export default ProfileDetailsScreen;

@@ -429,12 +429,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   filterWrapper: {
-    minHeight: 50, // Ensure container has minimum height
+    minHeight: 50,
   },
   filterContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    flexGrow: 1, // Ensure content takes full width
+    flexGrow: 1,
   },
   filterButton: {
     marginRight: 8,
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 2,
   },
   filterButtonText: {
     fontSize: 14,

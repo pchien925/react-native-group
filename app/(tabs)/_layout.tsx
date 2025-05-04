@@ -93,12 +93,12 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="order"
+        name="wishlist"
         options={{
-          title: "Đơn hàng",
+          title: "Yêu thích",
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
-              name={focused ? "receipt" : "receipt-outline"}
+              name={focused ? "heart" : "heart-outline"}
               size={focused ? 28 : 24}
               color={color}
             />
