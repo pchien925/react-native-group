@@ -17,6 +17,7 @@ export default function AuthLayout() {
                 resizeMode="stretch"
               />
             }
+            style={{ marginRight: 32 }}
           ></HeaderComponent>
         ),
       }}

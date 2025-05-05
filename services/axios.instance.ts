@@ -8,8 +8,8 @@ const backendUrl =
   Platform.OS === "ios" ? "http://172.20.10.3:9990" : "http://172.20.10.3:9990";
 
 const instance = axios.create({
-  baseURL: "http://192.168.1.6:9990",
-  timeout: 20000,
+  baseURL: "http://172.17.15.48:9990",
+  timeout: 40000,
   headers: {
     "Content-Type": "application/json",
   },

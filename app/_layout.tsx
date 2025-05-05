@@ -30,6 +30,13 @@ const RootLayout = () => {
             options={{ headerShown: true, headerTitle: "Thanh toán" }}
           />
           <Stack.Screen
+            name="branch"
+            options={{
+              headerShown: true,
+              headerTitle: "Danh sách chi nhánh",
+            }}
+          />
+          <Stack.Screen
             name="order/[id]"
             options={{
               headerShown: true,

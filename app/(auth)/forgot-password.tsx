@@ -106,12 +106,6 @@ const ForgotPasswordScreen: React.FC = () => {
           chúng tôi
         </TextComponent>
       </View>
-      <TextComponent style={styles.footerText}>
-        Phiên bản tồn đọng v0.19e.
-      </TextComponent>
-      <TextComponent style={styles.footerText}>
-        Độ nhiệt độ và thời gian cần sử dụng.
-      </TextComponent>
       <ToastComponent
         message={toast.message}
         type={toast.type}

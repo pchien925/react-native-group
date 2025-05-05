@@ -302,6 +302,7 @@ const RegisterScreen: React.FC = () => {
               onChangeText={setPassword}
               style={[styles.input, styles.passwordInput]}
               accessibilityLabel="Mật khẩu"
+              secureTextEntry={!showPassword}
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
@@ -318,7 +319,7 @@ const RegisterScreen: React.FC = () => {
         <SpaceComponent size={16} />
         <View>
           <TextComponent style={styles.label}>
-            Xác nhận mật khẩu{" "}
+            Xác nhận mật khẩu
             <TextComponent style={styles.required}>*</TextComponent>
           </TextComponent>
           <View style={styles.passwordContainer}>
@@ -327,6 +328,7 @@ const RegisterScreen: React.FC = () => {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               style={[styles.input, styles.passwordInput]}
+              secureTextEntry={!showConfirmPassword}
               accessibilityLabel="Xác nhận mật khẩu"
             />
             <TouchableOpacity
@@ -362,18 +364,7 @@ const RegisterScreen: React.FC = () => {
             onPress={() => router.replace("/(auth)/login")}
           />
         </RowComponent>
-        <SpaceComponent size={16} />
-        <TextComponent style={styles.termsText}>
-          Bằng cách đăng ký, bạn đồng ý với điều khoản và điều kiện của chúng
-          tôi
-        </TextComponent>
       </View>
-      <TextComponent style={styles.footerText}>
-        Phiên bản tồn đọng v0.19e.
-      </TextComponent>
-      <TextComponent style={styles.footerText}>
-        Độ nhiệt độ và thời gian cần sử dụng.
-      </TextComponent>
       <ToastComponent
         message={toast.message}
         type={toast.type}
