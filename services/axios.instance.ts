@@ -5,11 +5,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { handleApiError } from "@/utils/error.handler";
 
 const backendUrl =
-  Platform.OS === "ios" ? "http://172.20.10.3:9990" : "http://172.20.10.3:9990";
+  Platform.OS === "ios"
+    ? process.env.EXPO_PUBLIC_IOS_URL
+    : process.env.EXPO_PUBLIC_API_URL;
 
 const instance = axios.create({
-  baseURL: "http://172.17.15.48:9990",
-  timeout: 40000,
+  baseURL: backendUrl,
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
