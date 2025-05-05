@@ -181,6 +181,16 @@ declare global {
     userId: number;
   }
 
+  interface IOtpResponse {
+    email: string;
+    otpExpiry: number;
+  }
+
+  interface IVerifyOtpResponse {
+    email: string;
+    verificationToken: string;
+  }
+
   interface IUser {
     id: number;
     fullName: string;

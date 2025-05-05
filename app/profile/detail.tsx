@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { ScrollView, StyleSheet, Alert, View } from "react-native";
+import { ScrollView, StyleSheet, View, Alert } from "react-native";
 import { router } from "expo-router";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import SpaceComponent from "@/components/common/SpaceComponent";
@@ -17,6 +17,7 @@ import CardComponent from "@/components/common/CardComponent";
 import { updateUserApi, uploadFileApi } from "@/services/api";
 import ImagePickerComponent from "@/components/common/ImagePickerComponent";
 import ImageComponent from "@/components/common/ImageComponent";
+import Toast from "react-native-toast-message";
 
 type IconName =
   | "mail-outline"
@@ -95,56 +96,101 @@ const ProfileDetailsScreen: React.FC = () => {
           avatar: response.data as string,
         }));
       } else {
-        Alert.alert("Error", "No image URL received from server");
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: "Không nhận được URL ảnh từ máy chủ",
+        });
       }
     } catch (error) {
-      console.error("Image upload error:", error);
-      Alert.alert("Error", "Failed to upload image");
+      console.error("Lỗi tải ảnh:", error);
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể tải ảnh lên",
+      });
     } finally {
       setIsSubmitting(false);
     }
   }, []);
 
-  // Handle profile save
+  // Handle profile save with confirmation
   const handleSaveProfile = useCallback(async () => {
     if (!user?.id) return;
 
     // Validate data
     if (!formData.fullName) {
-      Alert.alert("Error", "Full name is required");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Tên đầy đủ là bắt buộc",
+      });
       return;
     }
     if (formData.dob && !/^\d{4}-\d{2}-\d{2}$/.test(formData.dob)) {
-      Alert.alert("Error", "Date of birth must be in YYYY-MM-DD format");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Ngày sinh phải có định dạng YYYY-MM-DD",
+      });
       return;
     }
     if (
       formData.gender &&
       !["MALE", "FEMALE", "OTHER"].includes(formData.gender)
     ) {
-      Alert.alert("Error", "Gender must be Male, Female, or Other");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Giới tính phải là Nam, Nữ hoặc Khác",
+      });
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const apiData = {
-        fullName: formData.fullName,
-        phone: formData.phone || undefined,
-        dob: formData.dob ? new Date(formData.dob) : undefined,
-        gender: formData.gender,
-        address: formData.address || undefined,
-        avatar: formData.avatar || undefined,
-      };
-      await updateUserApi(user.id, apiData);
-      dispatch(getCurrentUser());
-      Alert.alert("Success", "Profile updated successfully");
-      setIsEditMode(false);
-    } catch (error) {
-      Alert.alert("Error", "Failed to update profile");
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Show confirmation dialog
+    Alert.alert(
+      "Xác nhận",
+      "Bạn có chắc chắn muốn lưu các thay đổi?",
+      [
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+        {
+          text: "Lưu",
+          onPress: async () => {
+            setIsSubmitting(true);
+            try {
+              const apiData: Partial<IUser> = {
+                fullName: formData.fullName,
+                phone: formData.phone || undefined,
+                dob: formData.dob || undefined,
+                gender: formData.gender,
+                address: formData.address || undefined,
+                avatar: formData.avatar || undefined,
+              };
+              const response = await updateUserApi(user.id, apiData);
+              dispatch(getCurrentUser());
+              Toast.show({
+                type: "success",
+                text1: "Thành công",
+                text2: "Hồ sơ đã được cập nhật thành công",
+              });
+              setIsEditMode(false);
+            } catch (error) {
+              Toast.show({
+                type: "error",
+                text1: "Lỗi",
+                text2: "Không thể cập nhật hồ sơ",
+              });
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        },
+      ],
+      { cancelable: false }
+    );
   }, [formData, user?.id, dispatch]);
 
   // Toggle edit mode
@@ -167,7 +213,7 @@ const ProfileDetailsScreen: React.FC = () => {
     return (
       <ContainerComponent style={styles.container}>
         <LoadingComponent
-          loadingText="Loading..."
+          loadingText="Đang tải..."
           style={styles.loadingContainer}
         />
       </ContainerComponent>
@@ -179,8 +225,8 @@ const ProfileDetailsScreen: React.FC = () => {
     return (
       <ContainerComponent style={styles.container}>
         <CardComponent
-          title="Error"
-          content={error || "Unable to load user data"}
+          title="Lỗi"
+          content={error || "Không thể tải dữ liệu người dùng"}
           style={[
             styles.errorCard,
             {
@@ -196,7 +242,7 @@ const ProfileDetailsScreen: React.FC = () => {
           }}
         />
         <ButtonComponent
-          title="Back"
+          title="Quay lại"
           type="primary"
           onPress={() => router.back()}
           style={styles.backButton}
@@ -268,7 +314,7 @@ const ProfileDetailsScreen: React.FC = () => {
                 <InputComponent
                   value={formData.fullName}
                   onChangeText={(text) => handleInputChange("fullName", text)}
-                  placeholder="Full name"
+                  placeholder="Nhập tên đầy đủ"
                   style={styles.input}
                 />
               ) : (
@@ -301,7 +347,7 @@ const ProfileDetailsScreen: React.FC = () => {
 
         {/* Personal information */}
         <CardComponent
-          title="Personal Information"
+          title="Thông tin cá nhân"
           style={[
             styles.infoCard,
             {
@@ -320,47 +366,47 @@ const ProfileDetailsScreen: React.FC = () => {
             },
             {
               icon: "call-outline" as IconName,
-              label: "Phone",
-              value: formData.phone || "Not provided",
+              label: "Số điện thoại",
+              value: formData.phone || "Chưa cung cấp",
               key: "phone",
               editable: true,
             },
             {
               icon: "calendar-outline" as IconName,
-              label: "Date of Birth",
-              value: formData.dob || "Not provided",
+              label: "Ngày sinh",
+              value: formData.dob || "Chưa cung cấp",
               key: "dob",
               editable: true,
             },
             {
               icon: "person-outline" as IconName,
-              label: "Gender",
+              label: "Giới tính",
               value:
                 formData.gender === "MALE"
-                  ? "Male"
+                  ? "Nam"
                   : formData.gender === "FEMALE"
-                  ? "Female"
-                  : formData.gender || "Not provided",
+                  ? "Nữ"
+                  : formData.gender || "Chưa cung cấp",
               key: "gender",
               editable: true,
             },
             {
               icon: "location-outline" as IconName,
-              label: "Address",
-              value: formData.address || "Not provided",
+              label: "Địa chỉ",
+              value: formData.address || "Chưa cung cấp",
               key: "address",
               editable: true,
             },
             {
               icon: "star-outline" as IconName,
-              label: "Loyalty Points",
+              label: "Điểm tích lũy",
               value: user.loyaltyPointsBalance?.toString() || "0",
               editable: false,
             },
             {
               icon: "shield-checkmark-outline" as IconName,
-              label: "Status",
-              value: user.status === "ACTIVE" ? "Active" : "Inactive",
+              label: "Trạng thái",
+              value: user.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động",
               editable: false,
             },
           ].map((item, index) => (
@@ -386,7 +432,7 @@ const ProfileDetailsScreen: React.FC = () => {
                 <InputComponent
                   value={item.value}
                   onChangeText={(text) => handleInputChange(item.key!, text)}
-                  placeholder={`Enter ${item.label.toLowerCase()}`}
+                  placeholder={`Nhập ${item.label.toLowerCase()}`}
                   style={styles.input}
                 />
               ) : (
@@ -418,9 +464,9 @@ const ProfileDetailsScreen: React.FC = () => {
             title={
               isEditMode
                 ? isSubmitting
-                  ? "Saving..."
-                  : "Save"
-                : "Edit Profile"
+                  ? "Đang lưu..."
+                  : "Lưu"
+                : "Chỉnh sửa hồ sơ"
             }
             type={isEditMode ? "primary" : "outline"}
             onPress={isEditMode ? handleSaveProfile : handleEditToggle}
@@ -448,7 +494,7 @@ const ProfileDetailsScreen: React.FC = () => {
             ]}
           />
           <ButtonComponent
-            title={isEditMode ? "Cancel" : "Back"}
+            title={isEditMode ? "Hủy" : "Quay lại"}
             type="primary"
             onPress={isEditMode ? handleEditToggle : () => router.back()}
             style={[

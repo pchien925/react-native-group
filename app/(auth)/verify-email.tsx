@@ -8,47 +8,72 @@ import TextComponent from "@/components/common/TextComponent";
 import ToastComponent from "@/components/common/ToastComponent";
 import RowComponent from "@/components/common/RowComponent";
 import { Colors } from "@/constants/Colors";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { verifyOtpApi, verifyEmailApi } from "@/services/api"; // Import APIs
 
 const VerifyEmailScreen: React.FC = () => {
   const [otp, setOtp] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // Trạng thái loading
+  const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info" | "warning";
     visible: boolean;
   }>({ message: "", type: "success", visible: false });
   const otpRef = useRef<any>(null);
+  const { email, source } = useLocalSearchParams<{
+    email: string;
+    source?: string;
+  }>(); // Lấy email và source
 
-  const handleVerifyOTP = () => {
-    setIsLoading(true); // Đặt trạng thái loading về false trước khi xác minh
-    if (otp.length === 6) {
-      // Mô phỏng kiểm tra mã OTP
-      if (otp === "123456") {
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) {
+      setToast({
+        message: "Vui lòng nhập đủ 6 chữ số OTP",
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (source === "forgot-password") {
+        const response = await verifyOtpApi(email || "", otp);
         setToast({
           message: "Xác minh OTP thành công!",
           type: "success",
           visible: true,
         });
         setTimeout(() => {
-          router.replace("/(auth)/reset-password");
           otpRef.current?.clear();
+          router.push({
+            pathname: "/(auth)/reset-password",
+            params: {
+              email,
+              verificationToken: response.data?.verificationToken,
+            },
+          });
         }, 2000);
       } else {
+        await verifyEmailApi(email || "", otp);
         setToast({
-          message: "Mã OTP không hợp lệ",
-          type: "error",
+          message: "Xác minh OTP thành công!",
+          type: "success",
           visible: true,
         });
-        setIsLoading(false);
-        otpRef.current?.clear();
+        setTimeout(() => {
+          otpRef.current?.clear();
+          router.replace("/(auth)/login");
+        }, 2000);
       }
-    } else {
+    } catch (error: any) {
       setToast({
-        message: "Vui lòng nhập đủ 6 chữ số OTP",
+        message: error.response?.data?.message || "Mã OTP không hợp lệ",
         type: "error",
         visible: true,
       });
+      otpRef.current?.clear();
+    } finally {
       setIsLoading(false);
     }
   };
@@ -56,19 +81,14 @@ const VerifyEmailScreen: React.FC = () => {
   return (
     <ContainerComponent scrollable>
       <SpaceComponent size={16} />
-
       <TextComponent type="heading" style={styles.heading}>
         Xác Minh OTP
       </TextComponent>
       <TextComponent type="body" style={styles.description}>
         Nhập mã OTP 6 chữ số đã được gửi đến email của bạn.
       </TextComponent>
-
       <SpaceComponent size={24} />
-
-      {/* Form */}
       <View style={styles.formBox}>
-        {/* Trường OTP */}
         <View>
           <TextComponent style={styles.label}>
             Mã OTP <TextComponent style={styles.required}>*</TextComponent>
@@ -84,10 +104,7 @@ const VerifyEmailScreen: React.FC = () => {
             type="numeric"
           />
         </View>
-
         <SpaceComponent size={24} />
-
-        {/* Nút Xác Nhận */}
         <ButtonComponent
           title="Xác Nhận"
           onPress={handleVerifyOTP}
@@ -97,10 +114,7 @@ const VerifyEmailScreen: React.FC = () => {
           loading={isLoading}
           accessibilityLabel="Nút xác nhận OTP"
         />
-
         <SpaceComponent size={16} />
-
-        {/* Liên kết đến Đăng Nhập */}
         <RowComponent justifyContent="center" alignItems="center">
           <ButtonComponent
             type="text"
@@ -110,24 +124,18 @@ const VerifyEmailScreen: React.FC = () => {
             onPress={() => router.replace("/(auth)/login")}
           />
         </RowComponent>
-
         <SpaceComponent size={16} />
-
-        {/* Điều khoản */}
         <TextComponent style={styles.termsText}>
           Bằng cách xác minh OTP, bạn đồng ý với điều khoản và điều kiện của
           chúng tôi
         </TextComponent>
       </View>
-
-      {/* Chân trang */}
       <TextComponent style={styles.footerText}>
         Phiên bản tồn đọng v0.19e.
       </TextComponent>
       <TextComponent style={styles.footerText}>
         Độ nhiệt độ và thời gian cần sử dụng.
       </TextComponent>
-
       <ToastComponent
         message={toast.message}
         type={toast.type}
@@ -173,30 +181,6 @@ const styles = StyleSheet.create({
   required: {
     color: Colors.error,
     fontSize: 14,
-  },
-  otpContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  otpInput: {
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    borderRadius: 8,
-    width: 50,
-    height: 50,
-    backgroundColor: Colors.backgroundLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  otpInputFocused: {
-    borderColor: Colors.buttonPrimary,
-    borderWidth: 2,
-  },
-  otpText: {
-    fontSize: 20,
-    color: Colors.textLightPrimary,
-    textAlign: "center",
   },
   button: {
     backgroundColor: Colors.buttonPrimary,

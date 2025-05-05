@@ -1,11 +1,76 @@
 // services/api.ts
 import axios from "./axios.instance";
 
+//auth
 export const refreshTokenApi = (
   refreshToken: string
 ): Promise<IBackendResponse<ILoginResponse>> => {
   const url = `/api/v1/auth/refresh-token`;
   return axios.post(url, { refreshToken });
+};
+
+export const registerApi = (
+  fullName: string,
+  email: string,
+  phone: string,
+  gender: "MALE" | "FEMALE" | "OTHER",
+  dob: string,
+  address: string,
+  password: string,
+  confirmPassword: string
+): Promise<IBackendResponse<IUser>> => {
+  const url = `/api/v1/auth/sign-up`;
+  const data = {
+    fullName,
+    email,
+    phone,
+    gender,
+    dob,
+    address,
+    password,
+    confirmPassword,
+  };
+  return axios.post(url, data);
+};
+
+export const verifyEmailApi = (
+  email: string,
+  otp: string
+): Promise<IBackendResponse<String>> => {
+  const url = `/api/v1/auth/verify-email`;
+  const data = { email, otp };
+  return axios.post(url, data);
+};
+
+export const forgotPasswordApi = (
+  email: string
+): Promise<IBackendResponse<IOtpResponse>> => {
+  const url = `/api/v1/auth/forgot-password`;
+  return axios.post(url, { email });
+};
+
+export const verifyOtpApi = (
+  email: string,
+  otp: string
+): Promise<IBackendResponse<IVerifyOtpResponse>> => {
+  const url = `/api/v1/auth/verify-otp`;
+  const data = { email, otp };
+  return axios.post(url, data);
+};
+
+export const resetPasswordApi = (
+  verificationToken: string,
+  password: string,
+  confirmPassword: string
+): Promise<IBackendResponse<String>> => {
+  const url = `/api/v1/auth/reset-password`;
+  const data = { password, confirmPassword };
+  return axios.post(url, data, {
+    headers: {
+      "Content-Type": "application/json",
+      "X-Verification-Token": verificationToken,
+    },
+  });
 };
 
 export const getMenuItemsByCategoryApi = (
@@ -232,14 +297,7 @@ export const getWishlistByItemIdApi = (
 
 export const updateUserApi = (
   userId: number,
-  data: {
-    fullName?: string;
-    phone?: string;
-    dob?: Date;
-    gender?: "MALE" | "FEMALE" | "OTHER";
-    avatar?: string;
-    address?: string;
-  }
+  data: Partial<IUser>
 ): Promise<IBackendResponse<IUser>> => {
   const url = `/api/v1/users/${userId}`;
   return axios.put(url, data);
@@ -251,6 +309,7 @@ export const uploadFileApi = (
   const url = `/api/v1/upload`;
   const formData = new FormData();
   formData.append("file", file);
+  console.log("FormData:", formData, file);
   return axios.post(url, formData, {
     headers: {
       "Content-Type": "multipart/form-data",

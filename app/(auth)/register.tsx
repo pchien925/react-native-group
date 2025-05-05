@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { StyleSheet, View, TouchableOpacity, Platform } from "react-native";
+import {
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  Platform,
+  Text,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ContainerComponent from "@/components/common/ContainerComponent";
 import InputComponent from "@/components/common/InputComponent";
@@ -12,12 +18,25 @@ import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Colors } from "@/constants/Colors";
 import { router } from "expo-router";
+import { registerApi } from "@/services/api";
+
+// Hàm kiểm tra định dạng email
+const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// Hàm kiểm tra định dạng số điện thoại (VD: Việt Nam, bắt đầu bằng +84 hoặc 0, theo sau 9 chữ số)
+const validatePhone = (phone: string): boolean => {
+  const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/g;
+  return phoneRegex.test(phone);
+};
 
 const RegisterScreen: React.FC = () => {
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [gender, setGender] = useState("");
+  const [gender, setGender] = useState<"MALE" | "FEMALE" | "OTHER" | "">("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [address, setAddress] = useState("");
@@ -30,24 +49,47 @@ const RegisterScreen: React.FC = () => {
     type: "success" | "error" | "info" | "warning";
     visible: boolean;
   }>({ message: "", type: "success", visible: false });
+  const [isLoading, setIsLoading] = useState(false);
+  // Trạng thái lỗi
+  const [emailError, setEmailError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
-  // Định dạng ngày thành yyyy/MM/dd
+  // Định dạng ngày
   const formatDate = (date: Date | null): string => {
     if (!date) return "";
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
-    return `${year}/${month}/${day}`;
+    return `${year}-${month}-${day}`;
   };
 
-  // Xử lý khi chọn ngày
   const onDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || dateOfBirth;
     setShowDatePicker(Platform.OS === "ios");
     setDateOfBirth(currentDate);
   };
 
-  const handleRegister = () => {
+  // Xác thực email khi thay đổi
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (text && !validateEmail(text)) {
+      setEmailError("Email không đúng định dạng");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  // Xác thực số điện thoại khi thay đổi
+  const handlePhoneChange = (text: string) => {
+    setPhone(text);
+    if (text && !validatePhone(text)) {
+      setPhoneError("Số điện thoại không đúng định dạng (VD: 0987654321)");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  const handleRegister = async () => {
     if (
       fullname &&
       email &&
@@ -58,19 +100,62 @@ const RegisterScreen: React.FC = () => {
       password &&
       confirmPassword
     ) {
+      if (emailError || phoneError) {
+        setToast({
+          message: "Vui lòng sửa lỗi trong biểu mẫu",
+          type: "error",
+          visible: true,
+        });
+        return;
+      }
       if (password !== confirmPassword) {
         setToast({
           message: "Mật khẩu và xác nhận mật khẩu không khớp",
           type: "error",
           visible: true,
         });
-      } else {
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await registerApi(
+          fullname,
+          email,
+          phone,
+          gender as "MALE" | "FEMALE" | "OTHER",
+          formatDate(dateOfBirth),
+          address,
+          password,
+          confirmPassword
+        );
+        if (response.data) {
+          setToast({
+            message: "Đăng ký thành công! Vui lòng xác minh email.",
+            type: "success",
+            visible: true,
+          });
+          setTimeout(() => {
+            router.push({
+              pathname: "/(auth)/verify-email",
+              params: { email, source: "register" },
+            });
+          }, 2000);
+        } else {
+          setToast({
+            message: response?.message || "Đăng ký thất bại",
+            type: "error",
+            visible: true,
+          });
+        }
+      } catch (error: any) {
         setToast({
-          message: "Đăng ký thành công!",
-          type: "success",
+          message: error.response?.data?.message || "Đăng ký thất bại",
+          type: "error",
           visible: true,
         });
-        setTimeout(() => router.replace("/(auth)/login"), 2000);
+      } finally {
+        setIsLoading(false);
       }
     } else {
       setToast({
@@ -84,19 +169,14 @@ const RegisterScreen: React.FC = () => {
   return (
     <ContainerComponent scrollable>
       <SpaceComponent size={16} />
-
       <TextComponent type="heading" style={styles.heading}>
         Đăng Ký
       </TextComponent>
       <TextComponent type="body" style={styles.description}>
         Tạo tài khoản để tích điểm và nhận ưu đãi dành riêng cho thành viên!
       </TextComponent>
-
       <SpaceComponent size={24} />
-
-      {/* Form */}
       <View style={styles.formBox}>
-        {/* Họ và tên */}
         <View>
           <TextComponent style={styles.label}>
             Họ và tên <TextComponent style={styles.required}>*</TextComponent>
@@ -109,10 +189,7 @@ const RegisterScreen: React.FC = () => {
             accessibilityLabel="Họ và tên"
           />
         </View>
-
         <SpaceComponent size={16} />
-
-        {/* Email */}
         <View>
           <TextComponent style={styles.label}>
             Email <TextComponent style={styles.required}>*</TextComponent>
@@ -120,16 +197,16 @@ const RegisterScreen: React.FC = () => {
           <InputComponent
             placeholder="Email"
             value={email}
-            onChangeText={setEmail}
-            style={styles.input}
+            onChangeText={handleEmailChange}
+            style={[styles.input, emailError ? styles.inputError : null]}
             accessibilityLabel="Email"
             keyboardType="email-address"
           />
+          {emailError ? (
+            <Text style={styles.errorText}>{emailError}</Text>
+          ) : null}
         </View>
-
         <SpaceComponent size={16} />
-
-        {/* Số điện thoại */}
         <View>
           <TextComponent style={styles.label}>
             Số điện thoại{" "}
@@ -138,16 +215,16 @@ const RegisterScreen: React.FC = () => {
           <InputComponent
             placeholder="Số điện thoại"
             value={phone}
-            onChangeText={setPhone}
-            style={styles.input}
+            onChangeText={handlePhoneChange}
+            style={[styles.input, phoneError ? styles.inputError : null]}
             accessibilityLabel="Số điện thoại"
             keyboardType="phone-pad"
           />
+          {phoneError ? (
+            <Text style={styles.errorText}>{phoneError}</Text>
+          ) : null}
         </View>
-
         <SpaceComponent size={16} />
-
-        {/* Giới tính */}
         <View>
           <TextComponent style={styles.label}>
             Giới tính <TextComponent style={styles.required}>*</TextComponent>
@@ -166,10 +243,7 @@ const RegisterScreen: React.FC = () => {
             </Picker>
           </View>
         </View>
-
         <SpaceComponent size={16} />
-
-        {/* Ngày sinh */}
         <View>
           <TextComponent style={styles.label}>
             Ngày sinh <TextComponent style={styles.required}>*</TextComponent>
@@ -189,7 +263,7 @@ const RegisterScreen: React.FC = () => {
                 },
               ]}
             >
-              {formatDate(dateOfBirth) || "yyyy/MM/dd"}
+              {formatDate(dateOfBirth) || "yyyy-MM-dd"}
             </TextComponent>
           </TouchableOpacity>
           {showDatePicker && (
@@ -203,10 +277,7 @@ const RegisterScreen: React.FC = () => {
             />
           )}
         </View>
-
         <SpaceComponent size={16} />
-
-        {/* Địa chỉ */}
         <View>
           <TextComponent style={styles.label}>
             Địa chỉ <TextComponent style={styles.required}>*</TextComponent>
@@ -219,10 +290,7 @@ const RegisterScreen: React.FC = () => {
             accessibilityLabel="Địa chỉ"
           />
         </View>
-
         <SpaceComponent size={16} />
-
-        {/* Mật khẩu */}
         <View>
           <TextComponent style={styles.label}>
             Mật khẩu <TextComponent style={styles.required}>*</TextComponent>
@@ -232,7 +300,6 @@ const RegisterScreen: React.FC = () => {
               placeholder="Mật khẩu"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry={!showPassword}
               style={[styles.input, styles.passwordInput]}
               accessibilityLabel="Mật khẩu"
             />
@@ -248,10 +315,7 @@ const RegisterScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
-
         <SpaceComponent size={16} />
-
-        {/* Xác nhận mật khẩu */}
         <View>
           <TextComponent style={styles.label}>
             Xác nhận mật khẩu{" "}
@@ -262,7 +326,6 @@ const RegisterScreen: React.FC = () => {
               placeholder="Xác nhận mật khẩu"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
               style={[styles.input, styles.passwordInput]}
               accessibilityLabel="Xác nhận mật khẩu"
             />
@@ -280,22 +343,17 @@ const RegisterScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
-
         <SpaceComponent size={36} />
-
-        {/* Nút Đăng Ký */}
         <ButtonComponent
           title="Đăng Ký"
           onPress={handleRegister}
           type="primary"
           style={styles.button}
           textStyle={styles.buttonText}
+          loading={isLoading}
           accessibilityLabel="Nút đăng ký"
         />
-
         <SpaceComponent size={12} />
-
-        {/* Liên kết đến Đăng Nhập */}
         <RowComponent justifyContent="center" alignItems="center">
           <ButtonComponent
             type="text"
@@ -304,24 +362,18 @@ const RegisterScreen: React.FC = () => {
             onPress={() => router.replace("/(auth)/login")}
           />
         </RowComponent>
-
         <SpaceComponent size={16} />
-
-        {/* Điều khoản */}
         <TextComponent style={styles.termsText}>
           Bằng cách đăng ký, bạn đồng ý với điều khoản và điều kiện của chúng
           tôi
         </TextComponent>
       </View>
-
-      {/* Chân trang */}
       <TextComponent style={styles.footerText}>
         Phiên bản tồn đọng v0.19e.
       </TextComponent>
       <TextComponent style={styles.footerText}>
         Độ nhiệt độ và thời gian cần sử dụng.
       </TextComponent>
-
       <ToastComponent
         message={toast.message}
         type={toast.type}
@@ -333,6 +385,7 @@ const RegisterScreen: React.FC = () => {
   );
 };
 
+// Cập nhật styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -377,6 +430,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: Colors.backgroundLight,
     justifyContent: "center",
+  },
+  inputError: {
+    borderColor: Colors.error,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 12,
+    marginTop: 4,
   },
   inputText: {
     fontSize: 16,

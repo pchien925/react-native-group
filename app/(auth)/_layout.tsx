@@ -10,7 +10,6 @@ export default function AuthLayout() {
         headerShown: true,
         headerTitle: () => (
           <HeaderComponent
-            showBack
             centerContent={
               <ImageComponent
                 source={require("@/assets/images/pizza-logo.png")}

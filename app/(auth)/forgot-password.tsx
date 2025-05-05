@@ -9,52 +9,64 @@ import ToastComponent from "@/components/common/ToastComponent";
 import RowComponent from "@/components/common/RowComponent";
 import { Colors } from "@/constants/Colors";
 import { router } from "expo-router";
+import { forgotPasswordApi } from "@/services/api"; // Import API
 
 const ForgotPasswordScreen: React.FC = () => {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // Trạng thái loading
+  const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info" | "warning";
     visible: boolean;
   }>({ message: "", type: "success", visible: false });
 
-  const handleResetPassword = () => {
-    if (email) {
-      // Mô phỏng gửi yêu cầu đặt lại mật khẩu
+  const handleResetPassword = async () => {
+    if (!email) {
+      setToast({
+        message: "Vui lòng nhập email",
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await forgotPasswordApi(email);
       setToast({
         message:
           "Yêu cầu đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra email.",
         type: "success",
         visible: true,
       });
-      setIsLoading(true);
-      setTimeout(() => router.replace("/(auth)/verify-email"), 2000);
-    } else {
+      setTimeout(() => {
+        router.push({
+          pathname: "/(auth)/verify-email",
+          params: { email, source: "forgot-password" }, // Truyền email và nguồn
+        });
+      }, 2000);
+    } catch (error: any) {
       setToast({
-        message: "Vui lòng nhập email",
+        message: error.response?.data?.message || "Gửi yêu cầu thất bại",
         type: "error",
         visible: true,
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <ContainerComponent scrollable>
       <SpaceComponent size={16} />
-
       <TextComponent type="heading" style={styles.heading}>
         Quên Mật Khẩu
       </TextComponent>
       <TextComponent type="body" style={styles.description}>
-        Nhập email của bạn để nhận liên kết đặt lại mật khẩu.
+        Nhập email của bạn để nhận mã OTP đặt lại mật khẩu.
       </TextComponent>
-
       <SpaceComponent size={24} />
-
-      {/* Form */}
       <View style={styles.formBox}>
-        {/* Email */}
         <View>
           <TextComponent style={styles.label}>
             Email <TextComponent style={styles.required}>*</TextComponent>
@@ -68,10 +80,7 @@ const ForgotPasswordScreen: React.FC = () => {
             keyboardType="email-address"
           />
         </View>
-
         <SpaceComponent size={24} />
-
-        {/* Nút Gửi Yêu Cầu */}
         <ButtonComponent
           title="Gửi Yêu Cầu"
           onPress={handleResetPassword}
@@ -81,10 +90,7 @@ const ForgotPasswordScreen: React.FC = () => {
           loading={isLoading}
           accessibilityLabel="Nút gửi yêu cầu đặt lại mật khẩu"
         />
-
         <SpaceComponent size={16} />
-
-        {/* Liên kết đến Đăng Nhập */}
         <RowComponent justifyContent="center" alignItems="center">
           <ButtonComponent
             type="text"
@@ -94,24 +100,18 @@ const ForgotPasswordScreen: React.FC = () => {
             onPress={() => router.replace("/(auth)/login")}
           />
         </RowComponent>
-
         <SpaceComponent size={16} />
-
-        {/* Điều khoản */}
         <TextComponent style={styles.termsText}>
           Bằng cách gửi yêu cầu, bạn đồng ý với điều khoản và điều kiện của
           chúng tôi
         </TextComponent>
       </View>
-
-      {/* Chân trang */}
       <TextComponent style={styles.footerText}>
         Phiên bản tồn đọng v0.19e.
       </TextComponent>
       <TextComponent style={styles.footerText}>
         Độ nhiệt độ và thời gian cần sử dụng.
       </TextComponent>
-
       <ToastComponent
         message={toast.message}
         type={toast.type}

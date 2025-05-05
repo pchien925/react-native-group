@@ -1,4 +1,3 @@
-// NotificationScreen.tsx
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
@@ -6,6 +5,7 @@ import {
   Modal,
   TouchableOpacity,
   StyleSheet,
+  RefreshControl,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import ContainerComponent from "@/components/common/ContainerComponent";
@@ -37,6 +37,7 @@ const NotificationScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedNotification, setSelectedNotification] =
     useState<INotification | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Gọi API khi component mount và khi user thay đổi
   useEffect(() => {
@@ -58,6 +59,17 @@ const NotificationScreen: React.FC = () => {
           isLoadMore: true,
         })
       );
+    }
+  };
+
+  // Hàm làm mới danh sách thông báo
+  const onRefresh = async () => {
+    if (user?.id) {
+      setRefreshing(true);
+      await dispatch(
+        fetchNotifications({ userId: user.id, page: 1, size: pageSize })
+      );
+      setRefreshing(false);
     }
   };
 
@@ -294,6 +306,16 @@ const NotificationScreen: React.FC = () => {
             contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 16 }}
             initialNumToRender={10}
             windowSize={21}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={
+                  isDarkMode ? Colors.textDarkPrimary : Colors.textLightPrimary
+                }
+                colors={[Colors.primary]}
+              />
+            }
           />
         )}
         {renderModal()}
